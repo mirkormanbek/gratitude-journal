@@ -12,7 +12,7 @@
 :root{--bg:#f6f7f4;--card:#fff;--text:#1f2a22;--muted:#66736a;--line:#dde4de;--accent:#2f6b4f}
 *{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
 .wrap{max-width:760px;margin:0 auto;padding:22px 16px 48px}h1{font-size:28px;margin:0 0 8px}h2{margin-top:0}
-.sub{color:var(--muted);margin-bottom:16px;line-height:1.5}.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:16px 0}
+.sub{color:var(--muted);margin-bottom:16px;line-height:1.5}.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:16px 0}
 .tab{background:#e9efeb;color:var(--text)}.tab.active{background:var(--accent);color:white}
 .panel{display:none}.panel.active{display:block}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin:14px 0;box-shadow:0 4px 18px rgba(0,0,0,.03)}
 label{display:block;font-weight:700;margin-bottom:8px}textarea,input[type="date"],input[type="number"],input[type="range"],input[type="text"],select{width:100%}
@@ -35,6 +35,7 @@ button{border:none;border-radius:12px;padding:12px 16px;font-weight:700;cursor:p
 <button class="tab active" data-panel="dailyPanel">Ежедневник</button>
 <button class="tab" data-panel="weeklyPanel">CEO Review</button>
 <button class="tab" data-panel="knowledgePanel">База знаний</button>
+<button class="tab" data-panel="capitalPanel">Капитал</button>
 </div>
 
 <section id="dailyPanel" class="panel active">
@@ -114,6 +115,33 @@ button{border:none;border-radius:12px;padding:12px 16px;font-weight:700;cursor:p
 
 <div class="card"><h2>Накопленная база</h2><div id="knowledgeStats" class="stats"></div><div id="knowledgeHistory"></div></div>
 </section>
+
+<section id="capitalPanel" class="panel">
+<div class="card">
+<h2>Управление капиталом</h2>
+<div class="hint">Фиксируй цифры раз в неделю. Цель — видеть не баланс счёта, а реальную ликвидность и обязательства.</div>
+</div>
+
+<div class="card"><label for="capitalDate">Дата</label><input id="capitalDate" type="date"></div>
+<div class="card"><label for="capitalCash">1. Деньги на счетах / наличные, ₸</label><input id="capitalCash" type="number" min="0" step="1000" placeholder="Например: 12000000"></div>
+<div class="card"><label for="capitalWB">2. Ожидаемые выплаты от WB, ₸</label><input id="capitalWB" type="number" min="0" step="1000" placeholder="Сколько WB ещё должен выплатить"></div>
+<div class="card"><label for="capitalStock">3. Себестоимость товарных остатков, ₸</label><input id="capitalStock" type="number" min="0" step="1000" placeholder="Закупочная стоимость текущего товара"></div>
+<div class="card"><label for="capitalSuppliers">4. Долги поставщикам, ₸</label><input id="capitalSuppliers" type="number" min="0" step="1000"></div>
+<div class="card"><label for="capitalTaxes">5. Налоги и обязательные платежи, ₸</label><input id="capitalTaxes" type="number" min="0" step="1000"></div>
+<div class="card"><label for="capitalOther">6. Прочие обязательства, ₸</label><input id="capitalOther" type="number" min="0" step="1000" placeholder="Зарплаты, аренда, кредиты, логистика..."></div>
+<div class="card"><label for="capitalPurchases">7. Ближайшие закупки / пополнение, ₸</label><input id="capitalPurchases" type="number" min="0" step="1000"></div>
+<div class="card"><label for="capitalReserve">8. Резерв, который нельзя трогать, ₸</label><input id="capitalReserve" type="number" min="0" step="1000"></div>
+<div class="card"><label for="capitalNotes">9. Комментарий</label><textarea id="capitalNotes" placeholder="Крупные платежи, риски, кассовые разрывы, решения по капиталу..."></textarea></div>
+
+<div id="capitalStatus" class="hint" style="min-height:20px;margin-top:12px"></div>
+<div class="actions"><button class="primary" id="saveCapital">Сохранить капитал</button><button class="secondary" id="exportCapital">Экспорт капитала CSV</button></div>
+
+<div class="card">
+<h2>Текущая картина</h2>
+<div id="capitalStats" class="stats"></div>
+</div>
+<div class="card"><h2>История капитала</h2><div id="capitalHistory"></div></div>
+</section>
 </div>
 
 <script>
@@ -124,6 +152,7 @@ const weeklyKey="ceo_review_v1";
 const weeklyFields=["weekBest","weekLeaks","weekActions","weekTime","weekLever","weekGoal","weekTasks"];
 const knowledgeKey="business_knowledge_v1";
 const knowledgeFields=["knowledgeSource","knowledgeInsight","knowledgeWhy","knowledgeApply","knowledgeResult","knowledgeTags"];
+const capitalKey="capital_tracker_v1";
 
 function todayLocal(){const d=new Date();const off=d.getTimezoneOffset();return new Date(d.getTime()-off*60000).toISOString().slice(0,10)}
 function loadKey(k){try{return JSON.parse(localStorage.getItem(k)||"[]")}catch(e){return[]}}
@@ -132,7 +161,7 @@ function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&l
 function nl(s){return esc(s).replace(/\n/g,"<br>")}
 function moneyFmt(n){const x=Number(n||0);return x.toLocaleString("ru-RU")+" ₸"}
 
-$("date").value=todayLocal();$("weekDate").value=todayLocal();$("knowledgeDate").value=todayLocal();
+$("date").value=todayLocal();$("weekDate").value=todayLocal();$("knowledgeDate").value=todayLocal();$("capitalDate").value=todayLocal();
 $("mood").addEventListener("input",e=>$("score").textContent=e.target.value);
 
 document.querySelectorAll(".tab").forEach(btn=>btn.addEventListener("click",()=>{
@@ -215,6 +244,44 @@ $("exportKnowledge").addEventListener("click",()=>exportCsv(loadKey(knowledgeKey
 ["Дата","Категория","Источник","Что узнал","Почему важно","Как применить","Статус","Результат","Теги"],
 x=>[x.date,x.category,x.source,x.insight,x.why,x.apply,x.status,x.result||"",x.tags||""],"baza_znaniy.csv"));
 
+function renderCapital(){
+ const data=loadKey(capitalKey).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+ const h=$("capitalHistory"),stats=$("capitalStats");
+ if(!data.length){stats.innerHTML='<div class="empty">После первой записи здесь появится финансовая картина.</div>';h.innerHTML='<div class="empty">Пока нет записей.</div>';return}
+ const x=data[0];
+ const obligations=Number(x.suppliers||0)+Number(x.taxes||0)+Number(x.other||0);
+ const liquid=Number(x.cash||0)+Number(x.wb||0)-obligations-Number(x.purchases||0)-Number(x.reserve||0);
+ const totalCapital=Number(x.cash||0)+Number(x.wb||0)+Number(x.stock||0)-obligations;
+ stats.innerHTML=`<div class="stat">Свободная ликвидность<b>${moneyFmt(liquid)}</b></div><div class="stat">Обязательства<b>${moneyFmt(obligations)}</b></div><div class="stat">Капитал после обязательств<b>${moneyFmt(totalCapital)}</b></div>`;
+ h.innerHTML=data.map(v=>{
+   const obl=Number(v.suppliers||0)+Number(v.taxes||0)+Number(v.other||0);
+   const liq=Number(v.cash||0)+Number(v.wb||0)-obl-Number(v.purchases||0)-Number(v.reserve||0);
+   return `<div class="entry"><h3>${esc(v.date)} · свободно ${moneyFmt(liq)}</h3><p><b>Деньги:</b> ${moneyFmt(v.cash)}</p><p><b>WB к выплате:</b> ${moneyFmt(v.wb)}</p><p><b>Товарные остатки:</b> ${moneyFmt(v.stock)}</p><p><b>Долги поставщикам:</b> ${moneyFmt(v.suppliers)}</p><p><b>Налоги:</b> ${moneyFmt(v.taxes)}</p><p><b>Прочие обязательства:</b> ${moneyFmt(v.other)}</p><p><b>Ближайшие закупки:</b> ${moneyFmt(v.purchases)}</p><p><b>Резерв:</b> ${moneyFmt(v.reserve)}</p><p><b>Комментарий:</b><br>${nl(v.notes||"—")}</p></div>`;
+ }).join("");
+}
+
+$("saveCapital").addEventListener("click",()=>{
+ const entry={
+   date:$("capitalDate").value||todayLocal(),
+   cash:Number($("capitalCash").value||0),
+   wb:Number($("capitalWB").value||0),
+   stock:Number($("capitalStock").value||0),
+   suppliers:Number($("capitalSuppliers").value||0),
+   taxes:Number($("capitalTaxes").value||0),
+   other:Number($("capitalOther").value||0),
+   purchases:Number($("capitalPurchases").value||0),
+   reserve:Number($("capitalReserve").value||0),
+   notes:$("capitalNotes").value.trim()
+ };
+ let data=loadKey(capitalKey);const idx=data.findIndex(x=>x.date===entry.date);if(idx>=0)data[idx]=entry;else data.push(entry);storeKey(capitalKey,data);renderCapital();
+ ["capitalCash","capitalWB","capitalStock","capitalSuppliers","capitalTaxes","capitalOther","capitalPurchases","capitalReserve","capitalNotes"].forEach(id=>$(id).value="");
+ $("capitalDate").value=todayLocal();$("capitalStatus").textContent="✓ Капитал сохранён";setTimeout(()=>$("capitalStatus").textContent="",2500);
+});
+
+$("exportCapital").addEventListener("click",()=>exportCsv(loadKey(capitalKey),
+["Дата","Деньги на счетах","WB к выплате","Товарные остатки","Долги поставщикам","Налоги","Прочие обязательства","Ближайшие закупки","Резерв","Комментарий"],
+x=>[x.date,x.cash,x.wb,x.stock,x.suppliers,x.taxes,x.other,x.purchases,x.reserve,x.notes||""],"kapital.csv"));
+
 function exportCsv(data,headers,rowFn,fileName){
  if(!data.length){alert("Нет записей для экспорта.");return}
  const rows=data.sort((a,b)=>(a.date||"").localeCompare(b.date||"")).map(rowFn);
@@ -223,7 +290,7 @@ function exportCsv(data,headers,rowFn,fileName){
  a.href=url;a.download=fileName;a.click();URL.revokeObjectURL(url);
 }
 
-renderDaily();renderWeekly();renderKnowledge();
+renderDaily();renderWeekly();renderKnowledge();renderCapital();
 </script>
 </body>
 </html>
