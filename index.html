@@ -12,11 +12,11 @@
 :root{--bg:#f6f7f4;--card:#fff;--text:#1f2a22;--muted:#66736a;--line:#dde4de;--accent:#2f6b4f}
 *{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
 .wrap{max-width:760px;margin:0 auto;padding:22px 16px 48px}h1{font-size:28px;margin:0 0 8px}h2{margin-top:0}
-.sub{color:var(--muted);margin-bottom:16px;line-height:1.5}.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 0}
+.sub{color:var(--muted);margin-bottom:16px;line-height:1.5}.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:16px 0}
 .tab{background:#e9efeb;color:var(--text)}.tab.active{background:var(--accent);color:white}
 .panel{display:none}.panel.active{display:block}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin:14px 0;box-shadow:0 4px 18px rgba(0,0,0,.03)}
-label{display:block;font-weight:700;margin-bottom:8px}textarea,input[type="date"],input[type="number"],input[type="range"]{width:100%}
-textarea,input[type="date"],input[type="number"]{padding:12px;border:1px solid var(--line);border-radius:12px;font:inherit;background:white}
+label{display:block;font-weight:700;margin-bottom:8px}textarea,input[type="date"],input[type="number"],input[type="range"],input[type="text"],select{width:100%}
+textarea,input[type="date"],input[type="number"],input[type="text"],select{padding:12px;border:1px solid var(--line);border-radius:12px;font:inherit;background:white}
 textarea{min-height:100px;resize:vertical}.hint{color:var(--muted);font-size:13px;margin-top:6px;line-height:1.4}
 .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.score{font-size:24px;font-weight:700;min-width:42px;text-align:center}
 button{border:none;border-radius:12px;padding:12px 16px;font-weight:700;cursor:pointer}.primary{background:var(--accent);color:white}.secondary{background:#e9efeb;color:var(--text)}.danger{background:#f3e6e6;color:#8a3333}
@@ -34,6 +34,7 @@ button{border:none;border-radius:12px;padding:12px 16px;font-weight:700;cursor:p
 <div class="tabs">
 <button class="tab active" data-panel="dailyPanel">Ежедневник</button>
 <button class="tab" data-panel="weeklyPanel">CEO Review</button>
+<button class="tab" data-panel="knowledgePanel">База знаний</button>
 </div>
 
 <section id="dailyPanel" class="panel active">
@@ -76,6 +77,43 @@ button{border:none;border-radius:12px;padding:12px 16px;font-weight:700;cursor:p
 </div>
 <div class="card"><h2>История CEO Review</h2><div id="weekHistory"></div></div>
 </section>
+
+<section id="knowledgePanel" class="panel">
+<div class="card">
+<h2>База знаний</h2>
+<div class="hint">Сохраняй не просто информацию, а решения: что узнал → как применить → что получилось.</div>
+</div>
+
+<div class="card">
+<label for="knowledgeDate">Дата</label><input id="knowledgeDate" type="date">
+</div>
+<div class="card"><label for="knowledgeCategory">1. Категория</label>
+<select id="knowledgeCategory">
+<option>Маркетинг</option><option>Wildberries / маркетплейсы</option><option>Продукт</option><option>Финансы</option><option>Продажи / опт</option><option>Закуп / логистика</option><option>Команда / управление</option><option>Бренд / визуал</option><option>Нетворкинг</option><option>Другое</option>
+</select></div>
+<div class="card"><label for="knowledgeSource">2. Источник</label><input id="knowledgeSource" type="text" placeholder="Например: конкурент, интервью, книга, тренер, отзыв, TikTok..."></div>
+<div class="card"><label for="knowledgeInsight">3. Что я узнал?</label><textarea id="knowledgeInsight" placeholder="Одна конкретная идея или наблюдение."></textarea></div>
+<div class="card"><label for="knowledgeWhy">4. Почему это важно для моего бизнеса?</label><textarea id="knowledgeWhy" placeholder="Как это может повлиять на продажи, маржу, продукт, команду или масштаб?"></textarea></div>
+<div class="card"><label for="knowledgeApply">5. Как я это применю?</label><textarea id="knowledgeApply" placeholder="Конкретный тест или действие."></textarea></div>
+<div class="card"><label for="knowledgeStatus">6. Статус</label>
+<select id="knowledgeStatus"><option>Идея</option><option>Нужно протестировать</option><option>Тестируется</option><option>Сработало</option><option>Не сработало</option><option>Стало системой</option></select></div>
+<div class="card"><label for="knowledgeResult">7. Результат / вывод после теста</label><textarea id="knowledgeResult" placeholder="Заполни позже: цифры, наблюдения, что оставить или изменить."></textarea></div>
+<div class="card"><label for="knowledgeTags">8. Теги</label><input id="knowledgeTags" type="text" placeholder="Например: UGC, дзюдо, РФ, карточка, цена"></div>
+
+<input id="knowledgeEditId" type="hidden" value="">
+<div id="knowledgeStatusMsg" class="hint" style="min-height:20px;margin-top:12px"></div>
+<div class="actions"><button class="primary" id="saveKnowledge">Сохранить знание</button><button class="secondary" id="cancelKnowledgeEdit" style="display:none">Отменить редактирование</button><button class="secondary" id="exportKnowledge">Экспорт знаний CSV</button></div>
+
+<div class="card">
+<h2>Найти знание</h2>
+<div class="row">
+<div style="flex:2 1 220px"><input id="knowledgeSearch" type="text" placeholder="Поиск: UGC, маржа, РФ, дзюдо..."></div>
+<div style="flex:1 1 180px"><select id="knowledgeFilter"><option value="">Все статусы</option><option>Идея</option><option>Нужно протестировать</option><option>Тестируется</option><option>Сработало</option><option>Не сработало</option><option>Стало системой</option></select></div>
+</div>
+</div>
+
+<div class="card"><h2>Накопленная база</h2><div id="knowledgeStats" class="stats"></div><div id="knowledgeHistory"></div></div>
+</section>
 </div>
 
 <script>
@@ -84,6 +122,8 @@ const dailyFields=["allah","self","lesson","trust","action","money","focusloss"]
 const dailyKey="gratitude_journal_v1";
 const weeklyKey="ceo_review_v1";
 const weeklyFields=["weekBest","weekLeaks","weekActions","weekTime","weekLever","weekGoal","weekTasks"];
+const knowledgeKey="business_knowledge_v1";
+const knowledgeFields=["knowledgeSource","knowledgeInsight","knowledgeWhy","knowledgeApply","knowledgeResult","knowledgeTags"];
 
 function todayLocal(){const d=new Date();const off=d.getTimezoneOffset();return new Date(d.getTime()-off*60000).toISOString().slice(0,10)}
 function loadKey(k){try{return JSON.parse(localStorage.getItem(k)||"[]")}catch(e){return[]}}
@@ -92,7 +132,7 @@ function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&l
 function nl(s){return esc(s).replace(/\n/g,"<br>")}
 function moneyFmt(n){const x=Number(n||0);return x.toLocaleString("ru-RU")+" ₸"}
 
-$("date").value=todayLocal();$("weekDate").value=todayLocal();
+$("date").value=todayLocal();$("weekDate").value=todayLocal();$("knowledgeDate").value=todayLocal();
 $("mood").addEventListener("input",e=>$("score").textContent=e.target.value);
 
 document.querySelectorAll(".tab").forEach(btn=>btn.addEventListener("click",()=>{
@@ -141,6 +181,40 @@ $("exportWeek").addEventListener("click",()=>exportCsv(loadKey(weeklyKey),
 x=>[x.date,x.money,x.best,x.leaks,x.actions,x.time,x.lever,x.goal,x.tasks],"ceo_review_nedeli.csv"));
 $("clearWeek").addEventListener("click",()=>{if(confirm("Удалить всю историю CEO Review? Это действие нельзя отменить.")){localStorage.removeItem(weeklyKey);renderWeekly()}});
 
+function renderKnowledge(){
+ const all=loadKey(knowledgeKey).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+ const q=($("knowledgeSearch").value||"").toLowerCase().trim(),status=$("knowledgeFilter").value;
+ const data=all.filter(x=>(!status||x.status===status)&&(!q||[x.category,x.source,x.insight,x.why,x.apply,x.result,x.tags,x.status].join(" ").toLowerCase().includes(q)));
+ const total=all.length,worked=all.filter(x=>x.status==="Сработало"||x.status==="Стало системой").length,systems=all.filter(x=>x.status==="Стало системой").length;
+ $("knowledgeStats").innerHTML=`<div class="stat">Знаний<b>${total}</b></div><div class="stat">Сработало<b>${worked}</b></div><div class="stat">Стало системой<b>${systems}</b></div>`;
+ const h=$("knowledgeHistory");
+ if(!data.length){h.innerHTML='<div class="empty">Ничего не найдено.</div>';return}
+ h.innerHTML=data.map(x=>`<div class="entry"><h3>${esc(x.date)} · ${esc(x.category)} · ${esc(x.status)}</h3><p><b>Источник:</b> ${esc(x.source)}</p><p><b>Что узнал:</b><br>${nl(x.insight)}</p><p><b>Почему важно:</b><br>${nl(x.why)}</p><p><b>Как применить:</b><br>${nl(x.apply)}</p><p><b>Результат:</b><br>${nl(x.result||"—")}</p><p><b>Теги:</b> ${esc(x.tags||"—")}</p><div class="actions"><button class="secondary editKnowledge" data-id="${esc(x.id)}">Редактировать / дописать результат</button></div></div>`).join("");
+}
+
+function resetKnowledgeForm(){
+ $("knowledgeEditId").value="";$("knowledgeDate").value=todayLocal();$("knowledgeCategory").selectedIndex=0;$("knowledgeStatus").selectedIndex=0;
+ knowledgeFields.forEach(f=>$(f).value="");$("cancelKnowledgeEdit").style.display="none";$("saveKnowledge").textContent="Сохранить знание";
+}
+
+$("saveKnowledge").addEventListener("click",()=>{
+ const id=$("knowledgeEditId").value||("k_"+Date.now());
+ const entry={id,date:$("knowledgeDate").value||todayLocal(),category:$("knowledgeCategory").value,source:$("knowledgeSource").value.trim(),insight:$("knowledgeInsight").value.trim(),why:$("knowledgeWhy").value.trim(),apply:$("knowledgeApply").value.trim(),status:$("knowledgeStatus").value,result:$("knowledgeResult").value.trim(),tags:$("knowledgeTags").value.trim()};
+ if(!entry.insight){alert("Запиши хотя бы главное знание.");return}
+ let data=loadKey(knowledgeKey),idx=data.findIndex(x=>x.id===id);if(idx>=0)data[idx]=entry;else data.push(entry);storeKey(knowledgeKey,data);renderKnowledge();resetKnowledgeForm();
+ $("knowledgeStatusMsg").textContent="✓ Знание сохранено";setTimeout(()=>$("knowledgeStatusMsg").textContent="",2500);
+});
+$("cancelKnowledgeEdit").addEventListener("click",resetKnowledgeForm);
+$("knowledgeSearch").addEventListener("input",renderKnowledge);$("knowledgeFilter").addEventListener("change",renderKnowledge);
+$("knowledgeHistory").addEventListener("click",e=>{
+ const b=e.target.closest(".editKnowledge");if(!b)return;const x=loadKey(knowledgeKey).find(v=>v.id===b.dataset.id);if(!x)return;
+ $("knowledgeEditId").value=x.id;$("knowledgeDate").value=x.date||todayLocal();$("knowledgeCategory").value=x.category||"Другое";$("knowledgeSource").value=x.source||"";$("knowledgeInsight").value=x.insight||"";$("knowledgeWhy").value=x.why||"";$("knowledgeApply").value=x.apply||"";$("knowledgeStatus").value=x.status||"Идея";$("knowledgeResult").value=x.result||"";$("knowledgeTags").value=x.tags||"";
+ $("cancelKnowledgeEdit").style.display="inline-block";$("saveKnowledge").textContent="Обновить знание";window.scrollTo({top:0,behavior:"smooth"});
+});
+$("exportKnowledge").addEventListener("click",()=>exportCsv(loadKey(knowledgeKey),
+["Дата","Категория","Источник","Что узнал","Почему важно","Как применить","Статус","Результат","Теги"],
+x=>[x.date,x.category,x.source,x.insight,x.why,x.apply,x.status,x.result||"",x.tags||""],"baza_znaniy.csv"));
+
 function exportCsv(data,headers,rowFn,fileName){
  if(!data.length){alert("Нет записей для экспорта.");return}
  const rows=data.sort((a,b)=>(a.date||"").localeCompare(b.date||"")).map(rowFn);
@@ -149,7 +223,7 @@ function exportCsv(data,headers,rowFn,fileName){
  a.href=url;a.download=fileName;a.click();URL.revokeObjectURL(url);
 }
 
-renderDaily();renderWeekly();
+renderDaily();renderWeekly();renderKnowledge();
 </script>
 </body>
 </html>
