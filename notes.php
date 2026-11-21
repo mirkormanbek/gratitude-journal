@@ -92,7 +92,8 @@ try {
 
     if ($action === 'save') {
         $id = (int)($x['id'] ?? 0);
-        $kind = in_array($x['kind'] ?? 'note', NOTE_KINDS, true) ? (string)$x['kind'] : 'note';
+        $kind = (string)($x['kind'] ?? 'note');
+        if (!in_array($kind, NOTE_KINDS, true)) $kind = 'note';
         $title = nline($x['title'] ?? '', 200);
         $body = ntext($x['body'] ?? '', 20000);
         if ($title === null && $body === null) throw new RuntimeException('Пустая заметка.');
