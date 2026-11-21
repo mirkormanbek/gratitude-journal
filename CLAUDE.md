@@ -57,14 +57,23 @@ Production runs **PHP 7.4.33** (verified in Plesk 2026-11-21). No PHP 8 syntax o
 - Editing a journal entry must not create duplicate tasks.
 - Manual rescheduling of a task should not be overwritten by journal re-sync.
 
-## Workouts
-- Current concept: 3 workouts/week, default recurring schedule Mon=Day 1, Wed=Day 2, Fri=Day 3.
-- Rest days are unmarked.
-- A single missed workout can be moved to another date without shifting the permanent schedule.
-- Permanent weekly schedule is editable.
-- Workout calendar is the source of truth for dates.
-- Workout session records planned vs actual performance at set level (weight/reps).
-- Sessions, including test sessions, must be deletable with their recorded sets.
+## Workouts (v6, assets/workouts.js + workouts.php)
+- Default mode is **rotation** (`workout_programs.mode`): «Начать» starts the day after the last completed one (День 1 → 2 → 3 → 1) on any weekday; a different day can be chosen. No missed/moved sessions in this mode; the calendar shows real workouts only.
+- Optional **schedule** mode: fixed weekdays (Mon/Wed/Fri), missed sessions can be moved/cleared; switching back to schedule starts the calendar fresh from today.
+- Program editor: exercises are archived, never deleted (sets reference them). Progress groups exercises by normalized name (ё=е, case), so the same exercise on different days shares history; renaming splits history by name.
+- Gym mode logs planned vs actual sets (weight/reps), shows previous result and personal best, per-exercise rest timer, extra sets, set deletion.
+- Sessions (incl. test ones) are deletable with their sets.
+
+## Notes (assets/notes.js + notes.php)
+- One service for free notes and ideas/knowledge (`notes.kind` = note | idea). Ideas follow: Идея → Нужно протестировать → Тестируется → Сработало / Не сработало → Стало системой.
+- Notes can link to a project and appear on the project page. `knowledge_base` is a frozen backup; `api.php?resource=knowledge` reads notes for export.
+
+## Projects (assets/projects.js + projects.php)
+- List card shows progress and a checkable «Следующий шаг» (first open step by date/priority). Project page: outcome, steps with quick add, done steps collapsed, project notes.
+
+## Shared UI kit
+- `assets/ui.css` / `assets/ui.js` (window.UI): sheets, action sheets, segmented tabs, tiles, lists, toast, SVG charts. New services must use it instead of new one-off patterns.
+- Verify UI with `tools/ui_shoot.py` (Playwright, mocked API) at 390px before deploying.
 
 ## Quran
 - Daily reading should be a coherent **5–10 minute reading block**, not necessarily one ayah.
