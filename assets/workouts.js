@@ -73,6 +73,12 @@
     const dayOf = id => (s.days || []).find(d => Number(d.id) === Number(id));
     if (inprog) return { kind: 'prog', eyebrow: 'В процессе', session: inprog, day: dayOf(inprog.day_id), btn: 'Продолжить тренировку', action: 'continue',
       homeTitle: `${inprog.day_name} · продолжить`, homeMeta: 'Тренировка начата — продолжи с того же места' };
+    if (s.mode === 'rotation') {
+      const nd = s.next_day; const last = (st.stats?.sessions || [])[0];
+      const lastTxt = last ? `Последняя: ${last.day_name} · ${U.relDate(last.date)}` : 'Первая тренировка';
+      return { kind: 'next', eyebrow: 'Следующая по очереди', session: nd ? { day_name: nd.name, day_id: nd.id } : null, day: nd, btn: 'Начать тренировку', action: 'start_next', lastTxt, rotation: true,
+        homeTitle: nd ? `${nd.name} · следующая` : 'Тренировки', homeMeta: lastTxt };
+    }
     if (todayS) return { kind: 'today', eyebrow: 'Сегодня', session: todayS, day: dayOf(todayS.day_id), btn: 'Начать тренировку', action: 'start',
       homeTitle: `${todayS.day_name} · сегодня`, homeMeta: 'По расписанию сегодня' };
     if (overdue.length) { const o = overdue[overdue.length - 1]; return { kind: 'miss', eyebrow: `Пропущено · ${U.date(o.scheduled_date)}`, session: o, day: dayOf(o.day_id), btn: 'Сделать сегодня', action: 'today', extra: overdue.length,
@@ -110,10 +116,11 @@
       <div class="ui-card ui-hero">
         <div class="ui-eyebrow ${h.kind === 'miss' ? 'warn' : h.kind === 'prog' ? 'ok' : ''}">${esc(h.eyebrow)}</div>
         <div class="ui-title">${esc(h.session ? h.session.day_name : 'Тренировки')}</div>
-        <div class="ui-meta">${h.day ? `${exN} ${U.plural(exN, 'упражнение', 'упражнения', 'упражнений')} · ~${est} мин` : 'Настрой расписание в календаре'}${h.extra > 1 ? ` · пропущено ${h.extra}` : ''}</div>
+        <div class="ui-meta">${h.day ? `${exN} ${U.plural(exN, 'упражнение', 'упражнения', 'упражнений')} · ~${est} мин` : 'Настрой расписание в календаре'}${h.extra > 1 ? ` · пропущено ${h.extra}` : ''}${h.lastTxt ? `<br>${esc(h.lastTxt)}` : ''}</div>
         ${weekStrip()}
         ${(st.summary.overdue_sessions || []).length > 1 ? `<div class="ui-meta" style="margin-top:10px;font-size:12px">Пропущенных: ${st.summary.overdue_sessions.length}. <button class="ui-btn ghost" data-act="skip-missed" style="font-size:12px;padding:0">Очистить старые пропуски</button></div>` : ''}
         <div class="wk-hero-actions"><button class="ui-btn primary" data-act="hero">${esc(h.btn)}</button>${h.day ? `<button class="ui-btn" data-act="preview" title="Посмотреть упражнения">Состав</button>` : ''}</div>
+        ${h.rotation ? '<button class="ui-btn ghost" data-act="other-day" style="margin-top:8px;font-size:13px">Начать другой день…</button>' : ''}
       </div>
       <div class="ui-sec"><b>Ритм</b></div>
       <div class="ui-tiles">
@@ -148,10 +155,11 @@
     return `<div class="ui-card">
         <div class="wk-cal-head"><button class="wk-cal-nav" data-act="month" data-d="-1" aria-label="Предыдущий месяц">‹</button><b>${esc(label)}</b><button class="wk-cal-nav" data-act="month" data-d="1" aria-label="Следующий месяц">›</button></div>
         <div class="wk-cal">${cells}</div>
-        <div class="wk-legend"><span><i style="background:var(--green)"></i>выполнено</span><span><i style="background:var(--blue)"></i>план</span><span><i style="background:#ff453a"></i>пропущено</span><span><i style="background:#ff9f0a"></i>в процессе</span></div>
+        <div class="wk-legend"><span><i style="background:var(--green)"></i>выполнено</span>${s.mode === 'rotation' ? '' : '<span><i style="background:var(--blue)"></i>план</span><span><i style="background:#ff453a"></i>пропущено</span>'}<span><i style="background:#ff9f0a"></i>в процессе</span></div>
       </div>
-      <div class="ui-sec"><b>Постоянное расписание</b><button data-act="schedule">Изменить</button></div>
-      <div class="ui-card"><div class="ui-meta">${sched}</div><div class="ui-meta" style="margin-top:6px;font-size:12px">Перенос одной тренировки не меняет расписание остальных недель.</div></div>`;
+      <div class="ui-sec"><b>Как выбирается тренировка</b></div>
+      <div class="ui-card"><div class="ui-seg" style="margin-bottom:10px"><button data-act="mode" data-mode="rotation" class="${s.mode === 'rotation' ? 'on' : ''}">По очереди</button><button data-act="mode" data-mode="schedule" class="${s.mode !== 'rotation' ? 'on' : ''}">По дням недели</button></div>
+        <div class="ui-meta">${s.mode === 'rotation' ? 'Нажимаешь «Начать» в любой день — запускается следующий день программы после последнего выполненного (День 1 → 2 → 3 → 1). Пропусков и переносов нет.' : `Постоянные дни: ${sched}. Пропущенную тренировку можно перенести. <button class="ui-btn ghost" data-act="schedule" style="font-size:13px;padding:0">Изменить дни</button>`}</div></div>`;
   }
 
   async function calendarAction(id) {
@@ -329,9 +337,19 @@
     await U.busy(btn, async () => {
       if (h.action === 'continue') return openGym(h.session.id);
       if (h.action === 'start') return startSession(h.session);
+      if (h.action === 'start_next') return startNext();
       if (h.action === 'today') { await API('move', { id: h.session.id, date: U.today() }); await load(); const s2 = st.summary.today_session; if (s2) return startSession(s2); return; }
       setTab('calendar');
     }, 'Открываю…');
+  }
+  async function startNext(dayId) {
+    const j = await API('start_next', Object.assign({ date: U.today() }, dayId ? { day_id: dayId } : {}));
+    await openGym(Number(j.session_id));
+  }
+  async function otherDay() {
+    const days = st.summary.days || [];
+    const v = await U.actions(days.map(d => ({ label: `${d.name} · ${(d.exercises || []).length} упр.`, value: d.id })), 'Какой день начать сегодня?');
+    if (v) { try { await startNext(v); } catch (e) { U.toast('Ошибка: ' + e.message); } }
   }
   function previewDay() {
     const h = hero(); if (!h.day) return;
@@ -479,6 +497,8 @@
     const a = b.dataset.act;
     if (a === 'hero') return heroAction(b);
     if (a === 'preview') return previewDay();
+    if (a === 'other-day') return otherDay();
+    if (a === 'mode') { try { await API('set_mode', { mode: b.dataset.mode }); U.toast(b.dataset.mode === 'rotation' ? 'Режим: по очереди' : 'Режим: по дням недели'); await load(); } catch (e) { U.toast('Ошибка: ' + e.message); } return; }
     if (a === 'skip-missed') {
       const n = (st.summary.overdue_sessions || []).length;
       if (!(await U.confirm(`Отметить ${n} ${U.plural(n, 'пропущенную тренировку', 'пропущенные тренировки', 'пропущенных тренировок')} как пропуск и убрать из календаря? Выполненные тренировки и расписание не изменятся.`, 'Очистить'))) return;

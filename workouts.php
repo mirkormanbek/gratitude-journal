@@ -120,6 +120,11 @@ function monthWindow($month){
     $gridEnd=$last->modify('+'.(7-(int)$last->format('N')).' days');
     return array($gridStart->format('Y-m-d'),$gridEnd->format('Y-m-d'),$first->format('Y-m-d'),$last->format('Y-m-d'));
 }
+function programMode($program){
+    $m=isset($program['mode'])?(string)$program['mode']:'schedule';
+    return in_array($m,array('rotation','schedule'),true)?$m:'rotation';
+}
+/** Next day in rotation = the day after the last completed workout (by completion time). */
 function nextDayFallback($pdo,$programId,$days){
     if(!$days)return null;
     $s=$pdo->prepare("SELECT wd.day_order
@@ -139,6 +144,8 @@ function summary($pdo,$today,$month){
     $pid=(int)$program['id'];
     $days=daysForProgram($pdo,$pid);
     $schedule=scheduleForProgram($pdo,$pid);
+    $mode=programMode($program);
+    $rot=$mode==='rotation';
     list($gridFrom,$gridTo,$monthFrom,$monthTo)=monthWindow($month);
 
     $ensureFrom=$gridFrom;
@@ -147,7 +154,7 @@ function summary($pdo,$today,$month){
     $ensureTo=$gridTo;
     $future=(new DateTimeImmutable($today))->modify('+60 days')->format('Y-m-d');
     if($future>$ensureTo)$ensureTo=$future;
-    ensureScheduleSessions($pdo,$pid,$ensureFrom,$ensureTo);
+    if(!$rot)ensureScheduleSessions($pdo,$pid,$ensureFrom,$ensureTo);
 
     $s=$pdo->prepare("SELECT ws.*,wd.name day_name,wd.day_order
       FROM workout_sessions ws JOIN workout_days wd ON wd.id=ws.day_id
@@ -173,6 +180,7 @@ function summary($pdo,$today,$month){
       ORDER BY ws.scheduled_date,wd.day_order,ws.id");
     $s->execute(array($pid,$today));$overdue=$s->fetchAll();
     foreach($overdue as &$o)$o=sessionMini($o);unset($o);
+    if($rot){$todaySession=false;$nextSession=false;$overdue=array();}
 
     $from28=(new DateTimeImmutable($today))->modify('-27 days')->format('Y-m-d');
     $s=$pdo->prepare("SELECT COUNT(*) FROM workout_sessions WHERE program_id=? AND status='done' AND scheduled_date BETWEEN ? AND ?");
@@ -196,7 +204,7 @@ function summary($pdo,$today,$month){
 
     $s=$pdo->prepare("SELECT ws.id,ws.scheduled_date,ws.origin_date,ws.status,ws.is_auto,wd.name day_name,wd.day_order
       FROM workout_sessions ws JOIN workout_days wd ON wd.id=ws.day_id
-      WHERE ws.program_id=? AND ws.scheduled_date BETWEEN ? AND ?
+      WHERE ws.program_id=? AND ws.scheduled_date BETWEEN ? AND ?".($rot?" AND ws.status<>'planned'":"")."
       ORDER BY ws.scheduled_date,wd.day_order,ws.id");
     $s->execute(array($pid,$gridFrom,$gridTo));$calendar=$s->fetchAll();
     foreach($calendar as &$c){
@@ -205,10 +213,10 @@ function summary($pdo,$today,$month){
     unset($c);
 
     $agendaTo=(new DateTimeImmutable($today))->modify('+6 days')->format('Y-m-d');
-    ensureScheduleSessions($pdo,$pid,$today,$agendaTo);
+    if(!$rot)ensureScheduleSessions($pdo,$pid,$today,$agendaTo);
     $s=$pdo->prepare("SELECT ws.id,ws.scheduled_date,ws.status,wd.name day_name,wd.day_order
       FROM workout_sessions ws JOIN workout_days wd ON wd.id=ws.day_id
-      WHERE ws.program_id=? AND ws.scheduled_date BETWEEN ? AND ?
+      WHERE ws.program_id=? AND ws.scheduled_date BETWEEN ? AND ?".($rot?" AND ws.status<>'planned'":"")."
       ORDER BY ws.scheduled_date,wd.day_order,ws.id");
     $s->execute(array($pid,$today,$agendaTo));$agenda=$s->fetchAll();
     foreach($agenda as &$a){$a['id']=(int)$a['id'];$a['day_order']=(int)$a['day_order'];}unset($a);
@@ -218,9 +226,11 @@ function summary($pdo,$today,$month){
         foreach($days as $d)if((int)$d['id']===(int)$nextSession['day_id']){$nextDay=$d;break;}
     }
     if(!$nextDay)$nextDay=nextDayFallback($pdo,$pid,$days);
+    if($inprog){foreach($days as $d)if((int)$d['id']===(int)$inprog['day_id']){$nextDay=$d;break;}}
 
     return array(
-        'program'=>array('id'=>$pid,'name'=>(string)$program['name'],'target_per_week'=>(int)$program['target_per_week']),
+        'program'=>array('id'=>$pid,'name'=>(string)$program['name'],'target_per_week'=>(int)$program['target_per_week'],'mode'=>$mode),
+        'mode'=>$mode,
         'days'=>$days,
         'schedule'=>$schedule,
         'next_day'=>$nextDay,
@@ -539,6 +549,46 @@ try{
         if(!$s->fetchColumn())throw new RuntimeException('Тренировка не активна.');
         $pdo->prepare("DELETE FROM workout_sets WHERE session_id=? AND exercise_id=? AND set_no=?")->execute(array($sid,$eid,$setno));
         wout(array('ok'=>true));
+    }
+
+    if($action==='start_next'){
+        // Rotation mode: start the next day in order (or a chosen day) today, regardless of weekday.
+        $program=activeProgram($pdo);$pid=(int)$program['id'];
+        $date=isset($x['date'])?(string)$x['date']:date('Y-m-d');
+        if(!wdate($date))throw new RuntimeException('Некорректная дата.');
+        $s=$pdo->prepare("SELECT id FROM workout_sessions WHERE program_id=? AND status='in_progress' ORDER BY started_at DESC,id DESC LIMIT 1");
+        $s->execute(array($pid));$running=$s->fetchColumn();
+        if($running)wout(array('ok'=>true,'session_id'=>(int)$running,'existing'=>true));
+        $days=daysForProgram($pdo,$pid);
+        if(!$days)throw new RuntimeException('В программе нет тренировочных дней.');
+        $dayId=(int)(isset($x['day_id'])?$x['day_id']:0);$day=null;
+        if($dayId>0){foreach($days as $d)if((int)$d['id']===$dayId)$day=$d;if(!$day)throw new RuntimeException('Тренировочный день не найден.');}
+        else $day=nextDayFallback($pdo,$pid,$days);
+        // reuse a planned session of that day on this date if one exists (schedule leftovers), else create
+        $s=$pdo->prepare("SELECT id FROM workout_sessions WHERE program_id=? AND day_id=? AND scheduled_date=? AND status='planned' LIMIT 1");
+        $s->execute(array($pid,(int)$day['id'],$date));$sid=(int)$s->fetchColumn();
+        if($sid){$pdo->prepare("UPDATE workout_sessions SET status='in_progress',started_at=NOW() WHERE id=?")->execute(array($sid));}
+        else{
+            $pdo->prepare("INSERT INTO workout_sessions(program_id,day_id,scheduled_date,origin_date,is_auto,status,started_at) VALUES(?,?,?,?,0,'in_progress',NOW())")
+                ->execute(array($pid,(int)$day['id'],$date,$date));
+            $sid=(int)$pdo->lastInsertId();
+        }
+        wout(array('ok'=>true,'session_id'=>$sid,'day_name'=>(string)$day['name']));
+    }
+
+    if($action==='set_mode'){
+        $program=activeProgram($pdo);$pid=(int)$program['id'];
+        $mode=isset($x['mode'])?(string)$x['mode']:'';
+        if(!in_array($mode,array('rotation','schedule'),true))throw new RuntimeException('Неизвестный режим.');
+        $pdo->prepare("UPDATE workout_programs SET mode=? WHERE id=?")->execute(array($mode,$pid));
+        if($mode==='schedule'){
+            // start the calendar fresh from today: no "missed" backlog from the rotation period
+            $today=date('Y-m-d');
+            $pdo->prepare("DELETE ws FROM workout_sessions ws WHERE ws.program_id=? AND ws.status='planned' AND ws.scheduled_date<?
+                AND NOT EXISTS(SELECT 1 FROM workout_sets x WHERE x.session_id=ws.id)")->execute(array($pid,$today));
+            $pdo->prepare("UPDATE workout_schedule_slots SET effective_from=? WHERE program_id=? AND effective_from<?")->execute(array($today,$pid,$today));
+        }
+        wout(array('ok'=>true,'mode'=>$mode));
     }
 
     if($action==='skip_missed'){
