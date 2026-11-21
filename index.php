@@ -393,6 +393,7 @@ body.modalOpen{overflow:hidden}
 
 </style>
 <link rel="stylesheet" href="assets/ui.css?v=<?=@filemtime(__DIR__.'/assets/ui.css')?>">
+<link rel="stylesheet" href="assets/notes.css?v=<?=@filemtime(__DIR__.'/assets/notes.css')?>">
 <link rel="stylesheet" href="assets/workouts.css?v=<?=@filemtime(__DIR__.'/assets/workouts.css')?>">
 </head>
 <body>
@@ -434,7 +435,7 @@ body.modalOpen{overflow:hidden}
         <div class="statChip"><b id="homeDailyState">—</b><span id="homeDailyMeta">Дневник</span></div>
         <div class="statChip"><b id="homeMood">—</b><span>Состояние /10</span></div>
         <div class="statChip"><b id="homeWeeklyCount">0</b><span>CEO Review</span></div>
-        <div class="statChip"><b id="homeKnowledgeCount">0</b><span>Знания</span></div>
+        <div class="statChip"><b id="homeKnowledgeCount">0</b><span>Заметки</span></div>
       </div>
 
 
@@ -605,7 +606,7 @@ body.modalOpen{overflow:hidden}
         <button class="serviceTile goto" data-panel="workouts"><div><div class="serviceIcon">🏋️</div><b>Тренировки</b><span>Программа, подходы, веса и история.</span></div></button>
         <button class="serviceTile serviceAction" data-service="quran"><div><div class="serviceIcon">📖</div><b>Коран</b><span>Чтение на 5–10 минут и прогресс.</span></div></button>
         <button class="serviceTile serviceAction" data-service="person"><div><div class="serviceIcon">👤</div><b>Человек дня</b><span>Истории людей и их вклад в мир.</span></div></button>
-        <button class="serviceTile goto" data-panel="knowledge"><div><div class="serviceIcon">🧠</div><b>База знаний</b><span>Идея → применение → результат.</span></div></button>
+        <button class="serviceTile goto" data-panel="knowledge"><div><div class="serviceIcon">📝</div><b>Заметки</b><span>Мысли, идеи и база знаний.</span></div></button>
         <button class="serviceTile goto" data-panel="capital"><div><div class="serviceIcon">₸</div><b>Капитал</b><span>Ликвидность, обязательства и ресурс.</span></div></button>
         <button class="serviceTile goto" data-panel="weekly"><div><div class="serviceIcon">📊</div><b>CEO Review</b><span>Еженедельный бизнес-разбор.</span></div></button>
         <button class="serviceTile serviceAction" data-service="ai"><div><div class="serviceIcon">✨</div><b>AI-разбор</b><span>Разбор выбранных записей по запросу.</span></div></button>
@@ -661,35 +662,7 @@ body.modalOpen{overflow:hidden}
       <div class="history"><h3 class="sectionTitle">История</h3><div id="weeklyHistory"></div></div>
     </section>
 
-    <section id="knowledge" class="panel">
-      <div class="hero"><div><h2>База знаний</h2><p>Не просто идеи: источник → применение → результат → система.</p></div></div>
-      <div class="grid" style="margin-bottom:16px">
-        <div class="card metric span4"><div class="metricLabel">Всего знаний</div><div class="metricValue" id="k_total">0</div></div>
-        <div class="card metric span4"><div class="metricLabel">Сработало</div><div class="metricValue" id="k_worked">0</div></div>
-        <div class="card metric span4"><div class="metricLabel">Стало системой</div><div class="metricValue" id="k_systems">0</div></div>
-      </div>
-      <div class="card formCard">
-        <div class="field"><label>Дата</label><input id="k_date" type="date"></div>
-        <div class="field"><label>Категория</label><select id="k_category"><option>Маркетинг</option><option>Wildberries / маркетплейсы</option><option>Продукт</option><option>Финансы</option><option>Продажи / опт</option><option>Закуп / логистика</option><option>Команда / управление</option><option>Бренд / визуал</option><option>Нетворкинг</option><option>Другое</option></select></div>
-        <div class="field"><label>Источник</label><input id="k_source" type="text"></div>
-        <div class="field"><label>Что я узнал?</label><textarea id="k_insight"></textarea></div>
-        <div class="field"><label>Почему это важно?</label><textarea id="k_why"></textarea></div>
-        <div class="field"><label>Как применю?</label><textarea id="k_apply"></textarea></div>
-        <div class="field"><label>Статус</label><select id="k_status"><option>Идея</option><option>Нужно протестировать</option><option>Тестируется</option><option>Сработало</option><option>Не сработало</option><option>Стало системой</option></select></div>
-        <div class="field"><label>Результат / вывод</label><textarea id="k_result"></textarea></div>
-        <div class="field"><label>Теги</label><input id="k_tags" type="text" placeholder="UGC, РФ, маржа..."></div>
-        <input id="k_id" type="hidden">
-      </div>
-      <div class="btnrow"><button class="btn primary" id="saveKnowledge">Сохранить знание</button><button class="btn secondary" id="resetKnowledge">Новая запись</button></div>
-      <div class="status" id="knowledgeStatus"></div>
-      <div class="card flat" style="margin-top:22px">
-        <div class="searchRow">
-          <input id="k_search" type="text" placeholder="Поиск по базе знаний">
-          <select id="k_filter"><option value="">Все статусы</option><option>Идея</option><option>Нужно протестировать</option><option>Тестируется</option><option>Сработало</option><option>Не сработало</option><option>Стало системой</option></select>
-        </div>
-      </div>
-      <div class="history"><div id="knowledgeHistory"></div></div>
-    </section>
+    <section id="knowledge" class="panel"><div id="ntRoot"></div></section>
 
     <section id="capital" class="panel">
       <div class="hero"><div><h2>Капитал</h2><p>Реальная ликвидность, обязательства и доступный ресурс.</p></div></div>
@@ -837,7 +810,7 @@ body.modalOpen{overflow:hidden}
       <div class="storyCallout"><b>Что он оставил миру</b><div id="personContribution"></div></div>
       <div class="storyCallout"><b>Интересная деталь</b><div id="personFact"></div></div>
       <div class="modalSection">
-        <div class="btnrow"><button class="btn primary" id="completePerson">Прочитал ✓</button><button class="btn secondary" id="personToKnowledge">Сохранить в базу знаний</button></div>
+        <div class="btnrow"><button class="btn primary" id="completePerson">Прочитал ✓</button><button class="btn secondary" id="personToKnowledge">Сохранить в заметки</button></div>
         <div class="status" id="personStatus"></div>
       </div>
       <div class="modalSection">
@@ -879,6 +852,7 @@ body.modalOpen{overflow:hidden}
 </nav>
 
 <script src="assets/ui.js?v=<?=@filemtime(__DIR__.'/assets/ui.js')?>"></script>
+<script src="assets/notes.js?v=<?=@filemtime(__DIR__.'/assets/notes.js')?>"></script>
 <script src="assets/workouts.js?v=<?=@filemtime(__DIR__.'/assets/workouts.js')?>"></script>
 <script>
 const $=id=>document.getElementById(id);
@@ -898,7 +872,7 @@ async function api(resource,method='GET',data=null){
   return r.json();
 }
 
-const titles={home:'Сегодня',plan:'План',journalHub:'Дневник',progress:'Прогресс',services:'Сервисы',workouts:'Тренировки',daily:'Ежедневник',weekly:'CEO Review',knowledge:'База знаний',capital:'Капитал',exportPanel:'Экспорт'};
+const titles={home:'Сегодня',plan:'План',journalHub:'Дневник',progress:'Прогресс',services:'Сервисы',workouts:'Тренировки',daily:'Ежедневник',weekly:'CEO Review',knowledge:'Заметки',capital:'Капитал',exportPanel:'Экспорт'};
 const primaryPanel=id=>({
   daily:'journalHub',weekly:'journalHub',
   workouts:'services',knowledge:'services',capital:'services',exportPanel:'services'
@@ -913,6 +887,7 @@ function openPanel(id){
   if(id==='plan')renderPlanAgenda();
   if(id==='progress')renderGrowthProgress();
   if(id==='workouts')loadWorkouts();
+  if(id==='knowledge'&&window.Notes)Notes.load();
   if(window.innerWidth<900) window.scrollTo({top:0,behavior:'smooth'});
 }
 document.querySelectorAll('[data-panel]').forEach(b=>b.addEventListener('click',()=>openPanel(b.dataset.panel)));
@@ -1180,7 +1155,7 @@ function renderGrowthProgress(){
 
 async function refreshAll(){
   [daily,weekly,knowledge,capital]=await Promise.all([api('daily'),api('weekly'),api('knowledge'),api('capital')]);
-  renderDaily();renderWeekly();renderKnowledge();renderCapital();renderHome();renderJournalHub();
+  renderDaily();renderWeekly();renderCapital();renderHome();renderJournalHub();
   await Promise.allSettled([loadTasks(),loadWorkouts()]);
   renderPlanAgenda();renderGrowthProgress();
 }
@@ -1292,9 +1267,8 @@ $('completePerson').onclick=async()=>{
   catch(e){$('personStatus').textContent='Ошибка: '+e.message}finally{setBusy(b,false);if(todayPerson?.completed){b.textContent='Прочитано ✓';b.disabled=true}}
 };
 $('personToKnowledge').onclick=()=>{
-  if(!todayPerson)return;$('k_date').value=today();$('k_category').value='Другое';$('k_source').value='Человек дня · AI';
-  $('k_insight').value=`${todayPerson.name} — ${todayPerson.contribution||todayPerson.teaser||''}`;$('k_why').value='Хочу запомнить этого человека и его вклад.';$('k_apply').value='';$('k_status').value='Идея';$('k_tags').value='человек дня, история, вклад';
-  closeModal('personModal');openPanel('knowledge');$('k_insight').focus();
+  if(!todayPerson||!window.Notes)return;closeModal('personModal');
+  Notes.open({kind:'idea',title:todayPerson.name||'',body:todayPerson.contribution||todayPerson.teaser||'',why:'Хочу запомнить этого человека и его вклад.',source:'Человек дня',tags:'человек дня, история'});
 };
 $('askPersonAI').onclick=async()=>{
   const q=$('personQuestion').value.trim();if(!q)return alert('Напиши вопрос.');const b=$('askPersonAI');setBusy(b,true,'Думаю…');
@@ -1398,35 +1372,7 @@ $('saveWeekly').onclick=async()=>{
   await api('weekly','POST',x);$('weeklyStatus').textContent='✓ Сохранено';resetWeekly();await refreshAll()
 };
 
-function resetKnowledge(){['k_id','k_source','k_insight','k_why','k_apply','k_result','k_tags'].forEach(id=>$(id).value='');$('k_date').value=today();$('k_category').selectedIndex=0;$('k_status').selectedIndex=0;$('saveKnowledge').textContent='Сохранить знание'}
-$('resetKnowledge').onclick=resetKnowledge;
-function renderKnowledge(){
-  const q=$('k_search').value.toLowerCase().trim(),f=$('k_filter').value;
-  const all=knowledge.slice().sort((a,b)=>b.date.localeCompare(a.date));
-  const list=all.filter(x=>(!f||x.status===f)&&(!q||[x.category,x.source,x.insight,x.why,x.apply,x.result,x.tags].join(' ').toLowerCase().includes(q)));
-  const worked=all.filter(x=>['Сработало','Стало системой'].includes(x.status)).length,systems=all.filter(x=>x.status==='Стало системой').length;
-  $('k_total').textContent=all.length;$('k_worked').textContent=worked;$('k_systems').textContent=systems;
-  $('knowledgeHistory').innerHTML=list.length?list.map(x=>`<div class="entry">
-    <button class="entryHead"><div><div class="entryTitle">${esc(x.insight||'Без названия')}</div><div class="entryMeta">${esc(x.date)} · ${esc(x.category)} · ${esc(x.status)}</div></div><div class="chev">⌄</div></button>
-    <div class="entryBody">
-      <p><b>Источник</b><br>${esc(x.source||'—')}</p><p><b>Почему важно</b><br>${nl(x.why)}</p><p><b>Как применить</b><br>${nl(x.apply)}</p><p><b>Результат</b><br>${nl(x.result||'—')}</p>
-      <div class="tags">${String(x.tags||'').split(',').filter(Boolean).map(t=>`<span class="tag">${esc(t.trim())}</span>`).join('')}</div>
-      <div class="btnrow"><button class="btn secondary kEdit" data-id="${x.id}">Редактировать</button><button class="btn secondary kExport" data-id="${x.id}">Экспорт</button><button class="btn danger kDelete" data-id="${x.id}">Удалить</button></div>
-    </div></div>`).join(''):'<div class="empty">Ничего не найдено.</div>';
-}
-$('k_search').oninput=renderKnowledge;$('k_filter').onchange=renderKnowledge;
-$('knowledgeHistory').onclick=async e=>{
-  const id=e.target.dataset.id;if(!id)return;const x=knowledge.find(v=>String(v.id)===String(id));
-  if(e.target.classList.contains('kEdit')){
-    $('k_id').value=x.id;$('k_date').value=x.date;$('k_category').value=x.category;$('k_source').value=x.source;$('k_insight').value=x.insight;$('k_why').value=x.why;$('k_apply').value=x.apply;$('k_status').value=x.status;$('k_result').value=x.result;$('k_tags').value=x.tags;$('saveKnowledge').textContent='Обновить знание';window.scrollTo({top:0,behavior:'smooth'})
-  }
-  if(e.target.classList.contains('kExport'))oneExport('knowledge',x);
-  if(e.target.classList.contains('kDelete')&&confirmDelete('эту запись')){await api('knowledge','DELETE',{id});await refreshAll()}
-};
-$('saveKnowledge').onclick=async()=>{
-  const x={id:$('k_id').value,date:$('k_date').value,category:$('k_category').value,source:$('k_source').value,insight:$('k_insight').value,why:$('k_why').value,apply:$('k_apply').value,status:$('k_status').value,result:$('k_result').value,tags:$('k_tags').value};
-  if(!x.insight)return alert('Запиши главное знание');await api('knowledge','POST',x);$('knowledgeStatus').textContent='✓ Сохранено';resetKnowledge();await refreshAll()
-};
+// Notes / knowledge UI lives in assets/notes.js (window.Notes)
 
 function resetCapital(){['c_cash','c_wb','c_stock','c_suppliers','c_taxes','c_other','c_purchases','c_reserve','c_notes'].forEach(id=>$(id).value='');$('c_date').value=today()}
 $('resetCapital').onclick=resetCapital;

@@ -56,11 +56,12 @@ if ($method === 'GET') {
                 'lever'=>$r['x2_lever'],'goal'=>$r['next_week_goal'],'tasks'=>$r['next_week_tasks']
             ],$rows));
         case 'knowledge':
-            $rows=$pdo->query("SELECT * FROM knowledge_base ORDER BY entry_date DESC,id DESC")->fetchAll();
+            // Knowledge Base now lives in the Notes service (notes.php); this read-only view feeds export & counters.
+            $rows=$pdo->query("SELECT * FROM notes WHERE archived=0 ORDER BY note_date DESC,id DESC")->fetchAll();
             out(array_map(fn($r)=>[
-                'id'=>(string)$r['id'],'date'=>$r['entry_date'],'category'=>$r['category'],'source'=>$r['source'],
-                'insight'=>$r['insight'],'why'=>$r['why_important'],'apply'=>$r['how_to_apply'],
-                'status'=>$r['status'],'result'=>$r['result'],'tags'=>$r['tags']
+                'id'=>(string)$r['id'],'date'=>$r['note_date'],'category'=>$r['category']??($r['kind']==='idea'?'Идея':'Заметка'),'source'=>$r['source'],
+                'insight'=>trim(($r['title']?$r['title']."\n":'').($r['body']??'')),'why'=>$r['why'],'apply'=>$r['apply'],
+                'status'=>$r['status']??($r['kind']==='idea'?'Идея':'Заметка'),'result'=>$r['result'],'tags'=>$r['tags']
             ],$rows));
         case 'capital':
             $rows=$pdo->query("SELECT * FROM capital_entries ORDER BY entry_date DESC")->fetchAll();
@@ -94,14 +95,7 @@ if ($method === 'POST') {
             $pdo->prepare($sql)->execute([$x['date'],n($x['money']??0),$x['best']??'',$x['leaks']??'',$x['actions']??'',$x['time']??'',$x['lever']??'',$x['goal']??'',$x['tasks']??'']);
             out(['ok'=>true]);
         case 'knowledge':
-            if (!empty($x['id']) && ctype_digit((string)$x['id'])) {
-                $sql="UPDATE knowledge_base SET entry_date=?,category=?,source=?,insight=?,why_important=?,how_to_apply=?,status=?,result=?,tags=? WHERE id=?";
-                $pdo->prepare($sql)->execute([$x['date'],$x['category']??'',$x['source']??'',$x['insight']??'',$x['why']??'',$x['apply']??'',$x['status']??'Идея',$x['result']??'',$x['tags']??'',(int)$x['id']]);
-                out(['ok'=>true,'id'=>(int)$x['id']]);
-            }
-            $sql="INSERT INTO knowledge_base(entry_date,category,source,insight,why_important,how_to_apply,status,result,tags) VALUES(?,?,?,?,?,?,?,?,?)";
-            $pdo->prepare($sql)->execute([$x['date'],$x['category']??'',$x['source']??'',$x['insight']??'',$x['why']??'',$x['apply']??'',$x['status']??'Идея',$x['result']??'',$x['tags']??'']);
-            out(['ok'=>true,'id'=>(int)$pdo->lastInsertId()]);
+            http_response_code(410);out(['ok'=>false,'error'=>'Используйте сервис «Заметки» (notes.php)']);
         case 'capital':
             $sql="INSERT INTO capital_entries(entry_date,cash,wb_receivable,stock_cost,supplier_debt,taxes,other_obligations,upcoming_purchases,reserve_amount,notes)
                   VALUES(?,?,?,?,?,?,?,?,?,?)
@@ -127,9 +121,7 @@ if ($method === 'DELETE') {
             $stmt->execute([$x['date']??'']);
             out(['ok'=>true,'deleted'=>$stmt->rowCount()]);
         case 'knowledge':
-            $stmt=$pdo->prepare("DELETE FROM knowledge_base WHERE id=?");
-            $stmt->execute([(int)($x['id']??0)]);
-            out(['ok'=>true,'deleted'=>$stmt->rowCount()]);
+            http_response_code(410);out(['ok'=>false,'error'=>'Используйте сервис «Заметки» (notes.php)']);
         case 'capital':
             $stmt=$pdo->prepare("DELETE FROM capital_entries WHERE entry_date=?");
             $stmt->execute([$x['date']??'']);
