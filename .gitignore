@@ -1,0 +1,18 @@
+# Secrets — never commit
+config.php
+.env
+*.key
+
+# Server-side state / data
+.ftp-deploy-sync-state.json
+uploads/
+backups/
+*.sql.gz
+error_log
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

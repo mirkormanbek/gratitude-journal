@@ -1,0 +1,75 @@
+name: Check & Release
+
+# main ──checks──▶ production ──(Plesk Git pulls)──▶ journal.luckysport.kz
+# Plesk deploys ONLY the `production` branch, so unchecked code never reaches the site.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-production
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Checks (PHP 7.4, secrets, migrations)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          tools: none
+
+      - name: PHP syntax on 7.4 (same as production 7.4.33)
+        run: find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l
+
+      - name: Forbid PHP 8-only functions
+        run: bash tools/check_php8.sh
+
+      - name: JavaScript syntax (standalone .js files)
+        run: |
+          for f in $(git ls-files '*.js'); do node --check "$f"; done
+
+      - name: No secrets committed
+        run: |
+          if git ls-files --error-unmatch config.php >/dev/null 2>&1; then
+            echo "::error::config.php is tracked. Remove it: git rm --cached config.php"; exit 1
+          fi
+          if git grep -nE 'sk-(proj-)?[A-Za-z0-9_-]{20,}' -- . ':!docs'; then
+            echo "::error::Something looks like an OpenAI API key"; exit 1
+          fi
+
+      - name: Migration file names
+        run: |
+          bad=$(ls -A migrations | grep -vE '^([0-9]{4}_[a-z0-9_]+\.(sql|php)|README\.md|\.htaccess)$' || true)
+          if [ -n "$bad" ]; then echo "::error::Bad migration names: $bad"; exit 1; fi
+
+  release:
+    name: Release to production branch
+    needs: check
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fast-forward production to this commit
+        run: git push origin HEAD:refs/heads/production --force
+
+      - name: Smoke test (after Plesk pulls)
+        run: |
+          sleep 60
+          code=$(curl -s -L -o /tmp/page.html -w '%{http_code}' https://journal.luckysport.kz/login.php)
+          echo "login.php -> HTTP $code"
+          [ "$code" = "200" ] || { echo "::error::Site returned $code"; exit 1; }
+          if grep -qiE 'Fatal error|Parse error|Uncaught' /tmp/page.html; then
+            echo "::error::PHP error on login page"; exit 1
+          fi

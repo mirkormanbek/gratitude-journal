@@ -2,3 +2,9 @@ Options -Indexes
 <FilesMatch "^(config\.php|config\.example\.php|db\.php)$">
     Require all denied
 </FilesMatch>
+
+# Repository-only files (deployed by Plesk Git) are not web-accessible
+RedirectMatch 404 ^/(docs|tools|migrations|\.github)(/|$)
+<FilesMatch "^(CLAUDE\.md|README\.md|README\.txt|migrate\.php|\.gitignore)$">
+    Require all denied
+</FilesMatch>
