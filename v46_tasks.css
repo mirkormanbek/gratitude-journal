@@ -1,0 +1,25 @@
+/* Дневник роста v4.6 — UX задач */
+.v46MiniGroup{
+  margin:3px 0 5px;
+  color:#8e8e93;
+  font-size:10px;
+  line-height:1;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+.v46MiniGroup.tomorrow{margin-top:10px;color:#64a9ff}
+.v46More{font-size:11px;color:#8e8e93;padding-left:26px;margin-top:-1px}
+#taskHomeList .taskMini input:disabled{opacity:.35;cursor:default}
+#taskHomeList .taskMini input:disabled + span{color:#c9c9ce}
+.taskTabs{gap:7px}
+@media(max-width:560px){
+  .taskTabs{
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    padding-bottom:3px;
+    scrollbar-width:none;
+  }
+  .taskTabs::-webkit-scrollbar{display:none}
+  .taskTab{white-space:nowrap;flex:0 0 auto}
+}
