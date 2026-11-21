@@ -392,6 +392,8 @@ body.modalOpen{overflow:hidden}
 }
 
 </style>
+<link rel="stylesheet" href="assets/ui.css?v=<?=@filemtime(__DIR__.'/assets/ui.css')?>">
+<link rel="stylesheet" href="assets/workouts.css?v=<?=@filemtime(__DIR__.'/assets/workouts.css')?>">
 </head>
 <body>
 <div class="app">
@@ -611,66 +613,7 @@ body.modalOpen{overflow:hidden}
       </div>
     </section>
 
-    <section id="workouts" class="panel">
-      <div class="hero">
-        <div><h2>Тренировки</h2><p>Расписание по календарю: День 1 — понедельник, День 2 — среда, День 3 — пятница. Пропущенную тренировку можно перенести на другую дату.</p></div>
-      </div>
-
-      <div class="workoutTop">
-        <div class="card workoutNext">
-          <div class="eyebrow">Актуальная тренировка</div>
-          <h3 id="workoutNextName">Загружаю…</h3>
-          <p id="workoutNextMeta">Программа 3 раза в неделю</p>
-          <div class="btnrow">
-            <button class="btn primary" id="startWorkout">Начать тренировку</button>
-            <span class="serviceBadge" id="workoutPlanBadge"><i></i><span>расписание активно</span></span>
-          </div>
-          <div class="status" id="workoutStatus"></div>
-        </div>
-        <div class="card">
-          <div class="metricLabel">Последние 4 недели</div>
-          <div class="metricValue" id="workout28Count">0</div>
-          <div class="metricMeta" id="workout28Meta">из 12 тренировок</div>
-          <div class="todayProgress"><div class="progressBar"><i id="workout28Bar"></i></div></div>
-        </div>
-      </div>
-
-      <div class="card workoutScheduleCard">
-        <div class="workoutCardHead">
-          <div><h3>Расписание недели</h3><span>Постоянный ритм. Перенос одной тренировки не меняет остальные недели.</span></div>
-          <button class="btn secondary" id="editWorkoutSchedule">Изменить</button>
-        </div>
-        <div id="workoutWeekSchedule" class="weekSchedule"></div>
-      </div>
-
-      <div class="card workoutCalendarCard">
-        <div class="workoutCardHead">
-          <div><h3>Календарь тренировок</h3><span>Нажми на тренировку, чтобы начать, перенести или удалить.</span></div>
-        </div>
-        <div class="calendarToolbar">
-          <button class="calendarNav" id="workoutMonthPrev" aria-label="Предыдущий месяц">‹</button>
-          <b id="workoutMonthLabel">Месяц</b>
-          <button class="calendarNav" id="workoutMonthNext" aria-label="Следующий месяц">›</button>
-        </div>
-        <div class="calendarWeekdays"><div>Пн</div><div>Вт</div><div>Ср</div><div>Чт</div><div>Пт</div><div>Сб</div><div>Вс</div></div>
-        <div id="workoutCalendar" class="workoutCalendar"></div>
-        <div id="workoutSelected" class="workoutSelected" hidden>
-          <div class="workoutSelectedTop"><div><b id="workoutSelectedTitle">Тренировка</b><span id="workoutSelectedMeta"></span></div><span class="badge" id="workoutSelectedStatus">План</span></div>
-          <div class="workoutSelectedActions">
-            <button class="btn primary" id="startSelectedWorkout">Начать</button>
-            <div class="moveWorkoutRow"><input id="workoutMoveDate" type="date"><button class="btn secondary" id="moveSelectedWorkout">Перенести</button></div>
-            <button class="btn danger" id="deleteSelectedWorkout">Удалить</button>
-          </div>
-          <div class="status" id="workoutSelectedMessage"></div>
-        </div>
-      </div>
-
-      <div class="osSectionTitle" style="margin-top:22px">Текущая программа</div>
-      <div id="programDays" class="programDays"></div>
-
-      <div class="osSectionTitle" style="margin-top:22px">Последние тренировки</div>
-      <div id="workoutHistory" class="workoutHistory"></div>
-    </section>
+    <section id="workouts" class="panel"><div id="wkRoot"></div></section>
 
     <section id="daily" class="panel">
       <div class="hero"><div><h2>Ежедневник</h2><p>Короткая вечерняя фиксация: вера, выводы, фокус, действие.</p></div></div>
@@ -927,37 +870,6 @@ body.modalOpen{overflow:hidden}
 </div>
 
 
-<div class="modal" id="workoutScheduleModal" aria-hidden="true">
-  <div class="modalSheet" role="dialog" aria-modal="true" aria-labelledby="workoutScheduleTitle">
-    <div class="modalHead"><div><div class="eyebrow">Тренировки</div><h2 id="workoutScheduleTitle">Расписание недели</h2></div><button class="modalClose" data-close="workoutScheduleModal" aria-label="Закрыть">×</button></div>
-    <div class="modalBody">
-      <div class="readingIntro">Выбери постоянные дни. По умолчанию: День 1 — понедельник, День 2 — среда, День 3 — пятница. Перенос конкретной пропущенной тренировки делается через календарь и не меняет это расписание.</div>
-      <div id="workoutScheduleEditor" class="scheduleEditorGrid"></div>
-      <div class="btnrow"><button class="btn primary" id="saveWorkoutSchedule">Сохранить расписание</button><button class="btn secondary" data-close="workoutScheduleModal">Отмена</button></div>
-      <div class="status" id="workoutScheduleStatus"></div>
-    </div>
-  </div>
-</div>
-
-<div class="modal" id="workoutSessionModal" aria-hidden="true">
-  <div class="modalSheet workoutSessionSheet" role="dialog" aria-modal="true" aria-labelledby="workoutSessionTitle">
-    <div class="workoutSessionHead">
-      <div><div class="eyebrow">Тренировка</div><b id="workoutSessionTitle">Сессия</b></div>
-      <div class="restTimer">Отдых <b id="restTimerValue">00:00</b></div>
-      <button class="modalClose" data-close="workoutSessionModal" aria-label="Закрыть">×</button>
-    </div>
-    <div class="modalBody">
-      <div class="readingIntro" id="workoutSessionMeta"></div>
-      <div id="workoutSessionExercises"></div>
-      <div class="btnrow">
-        <button class="btn primary" id="completeWorkout">Завершить тренировку</button>
-        <button class="btn secondary" data-close="workoutSessionModal">Закрыть и продолжить позже</button>
-      </div>
-      <div class="status" id="workoutSessionStatus"></div>
-    </div>
-  </div>
-</div>
-
 <nav class="mobileNav">
   <button class="mnav active" data-panel="home"><span>⌂</span>Сегодня</button>
   <button class="mnav" data-panel="plan"><span>▣</span>План</button>
@@ -966,6 +878,8 @@ body.modalOpen{overflow:hidden}
   <button class="mnav" data-panel="services"><span>▦</span>Сервисы</button>
 </nav>
 
+<script src="assets/ui.js?v=<?=@filemtime(__DIR__.'/assets/ui.js')?>"></script>
+<script src="assets/workouts.js?v=<?=@filemtime(__DIR__.'/assets/workouts.js')?>"></script>
 <script>
 const $=id=>document.getElementById(id);
 const today=()=>{let d=new Date(),o=d.getTimezoneOffset();return new Date(d-o*60000).toISOString().slice(0,10)};
@@ -1232,152 +1146,8 @@ function renderPlanAgenda(){
   }
   box.innerHTML=html;
 }
-function workoutDayCard(d){
-  return `<div class="card programDay"><h3>${esc(d.name)}</h3><div class="dayMeta">${Number(d.exercise_count||0)} упражнений</div>${(d.exercises||[]).map(e=>`<div class="exerciseMini"><b>${esc(e.name)}</b><br><span style="color:var(--muted)">${Number(e.target_sets||0)} × ${esc(e.target_reps||'—')}${e.default_weight?` · ${Number(e.default_weight)} кг`:''}</span></div>`).join('')}</div>`;
-}
-const workoutWeekNames=['','Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
-const workoutStatusName=s=>s==='done'?'Выполнено':s==='in_progress'?'В процессе':'Запланировано';
-function renderWorkoutWeek(s){
-  const by={};(s?.schedule||[]).forEach(x=>by[Number(x.weekday)]=x);
-  $('workoutWeekSchedule').innerHTML=[1,2,3,4,5,6,7].map(w=>{
-    const x=by[w];return `<div class="weekSlot ${x?'training':''}"><b>${workoutWeekNames[w]}</b><span>${x?esc(x.day_name):'Отдых'}</span></div>`;
-  }).join('');
-}
-function workoutScheduleOptions(selected){
-  return [1,2,3,4,5,6,7].map(w=>`<option value="${w}" ${Number(selected)===w?'selected':''}>${workoutWeekNames[w]}</option>`).join('');
-}
-function renderWorkoutScheduleEditor(){
-  const current={};(workoutSummary?.schedule||[]).forEach(x=>current[Number(x.day_id)]=Number(x.weekday));
-  $('workoutScheduleEditor').innerHTML=(workoutSummary?.days||[]).map(d=>`<div class="scheduleEditorRow"><b>${esc(d.name)}</b><select data-schedule-day="${d.id}">${workoutScheduleOptions(current[Number(d.id)]||Number(d.day_order)*2-1)}</select></div>`).join('');
-}
-function calendarDateRange(from,to){
-  const out=[];let d=new Date(from+'T12:00:00'),end=new Date(to+'T12:00:00');
-  while(d<=end){out.push(d.toISOString().slice(0,10));d.setDate(d.getDate()+1)}return out;
-}
-function renderWorkoutCalendar(s){
-  const month=s?.calendar_month||workoutCalendarMonth;workoutCalendarMonth=month;
-  const label=new Date(month+'-01T12:00:00').toLocaleDateString('ru-RU',{month:'long',year:'numeric'});
-  $('workoutMonthLabel').textContent=label;
-  const sessions=s?.calendar||[];const byDate={};sessions.forEach(x=>{if(!byDate[x.scheduled_date])byDate[x.scheduled_date]=[];byDate[x.scheduled_date].push(x)});
-  const dates=calendarDateRange(s.calendar_from,s.calendar_to);
-  $('workoutCalendar').innerHTML=dates.map(d=>{
-    const arr=byDate[d]||[],session=arr[0]||null;
-    const outside=d.slice(0,7)!==month;const td=d===today();
-    let cls='calendarCell'+(outside?' outside':'')+(td?' today':'')+(session?' hasWorkout':'')+(selectedWorkoutSession&&Number(selectedWorkoutSession.id)===Number(session?.id)?' selected':'');
-    let chip='';
-    if(session){
-      const overdue=session.status==='planned'&&d<today();
-      const st=session.status==='done'?'done':session.status==='in_progress'?'in_progress':overdue?'overdue':'';
-      chip=`<div class="calendarWorkout ${st}" data-workout-session="${session.id}">${esc(session.day_name)}</div>`;
-    }
-    return `<div class="${cls}" data-calendar-date="${d}" ${session?`data-session-id="${session.id}"`:''}><div class="calendarNum">${Number(d.slice(8,10))}</div>${chip}</div>`;
-  }).join('');
-}
-function selectWorkoutSession(id){
-  const all=workoutSummary?.calendar||[];selectedWorkoutSession=all.find(x=>Number(x.id)===Number(id))||null;
-  if(!selectedWorkoutSession){$('workoutSelected').hidden=true;return}
-  const s=selectedWorkoutSession,overdue=s.status==='planned'&&s.scheduled_date<today();
-  $('workoutSelected').hidden=false;
-  $('workoutSelectedTitle').textContent=s.day_name;
-  $('workoutSelectedMeta').textContent=`${fullDate(s.scheduled_date)}${overdue?' · пропущено':''}`;
-  $('workoutSelectedStatus').textContent=overdue?'Пропущено':workoutStatusName(s.status);
-  $('workoutMoveDate').value=s.scheduled_date;
-  $('startSelectedWorkout').hidden=s.status==='done';
-  $('moveSelectedWorkout').hidden=s.status==='done'||s.status==='in_progress';
-  $('workoutMoveDate').hidden=s.status==='done'||s.status==='in_progress';
-  $('deleteSelectedWorkout').hidden=false;
-  $('workoutSelectedMessage').textContent='';
-  renderWorkoutCalendar(workoutSummary);
-}
-function renderWorkoutSummary(s){
-  workoutSummary=s;
-  renderWorkoutWeek(s);renderWorkoutCalendar(s);
-  const inprog=s?.in_progress||null,todaySession=s?.today_session||null,overdue=(s?.overdue_sessions||[]),planned=s?.planned_session||null;
-  const primary=inprog||todaySession||overdue[0]||planned||null;
-  const nextDay=s?.next_day||{};
-  let title=primary?`${primary.day_name}${inprog?' · в процессе':''}`:(nextDay.name||'Следующая тренировка');
-  $('workoutNextName').textContent=title;
-  if(inprog){$('workoutNextMeta').textContent='Тренировка уже начата — продолжи с сохранённого подхода.';workoutMainMode='continue';$('startWorkout').textContent='Продолжить тренировку'}
-  else if(todaySession){$('workoutNextMeta').textContent=`Сегодня по расписанию · ${fullDate(todaySession.scheduled_date)}`;workoutMainMode='start';$('startWorkout').textContent='Начать тренировку'}
-  else if(overdue.length){$('workoutNextMeta').textContent=`Пропущено: ${fullDate(overdue[0].scheduled_date)}. Можно перенести на сегодня.`;workoutMainMode='move_overdue';$('startWorkout').textContent='Перенести на сегодня'}
-  else if(planned){$('workoutNextMeta').textContent=`Следующая по календарю · ${fullDate(planned.scheduled_date)}`;workoutMainMode='select_next';$('startWorkout').textContent='Показать в календаре'}
-  else{$('workoutNextMeta').textContent='Расписание активно.';workoutMainMode='none';$('startWorkout').textContent='Открыть календарь'}
-  $('workoutPlanBadge').querySelector('span').textContent=overdue.length?`${overdue.length} ${pluralRu(overdue.length,'пропущена','пропущены','пропущено')}`:'расписание активно';
-
-  const count=Number(s?.stats?.last_28_days||0),target=Number(s?.stats?.target_28_days||12);
-  $('workout28Count').textContent=count;$('workout28Meta').textContent=`из ${target} тренировок`;$('workout28Bar').style.width=Math.min(100,target?count/target*100:0)+'%';
-  $('programDays').innerHTML=(s?.days||[]).map(workoutDayCard).join('')||'<div class="empty">Программа пока не настроена.</div>';
-  $('workoutHistory').innerHTML=(s?.history||[]).length?s.history.map(h=>`<div class="workoutHistoryRow"><div><b>${esc(h.day_name)}</b><span>${fullDate(h.scheduled_date)}${h.duration_minutes?` · ${h.duration_minutes} мин`:''}</span></div><div class="workoutHistoryActions"><div style="text-align:right"><b>${Number(h.completed_sets||0)} подходов</b><span>завершено</span></div><button class="workoutDeleteSmall" data-delete-history="${h.id}">Удалить</button></div></div>`).join(''):'<div class="empty">История тренировок пока пустая.</div>';
-  $('workoutHomeTitle').textContent=inprog?`${inprog.day_name} · продолжить`:(todaySession?`${todaySession.day_name} · сегодня`:(planned?`${planned.day_name} · ${fullDate(planned.scheduled_date)}`:(nextDay.name||'Тренировки')));
-  $('workoutHomeMeta').textContent=overdue.length?`Есть ${overdue.length} пропущенная тренировка`:(todaySession?'По расписанию сегодня':`${s?.program?.target_per_week||3} раза в неделю`);
-  $('workoutHomeBtn').textContent=inprog?'Продолжить':'Открыть тренировки';
-  renderPlanAgenda();renderGrowthProgress();
-}
-async function loadWorkouts(month=workoutCalendarMonth){
-  try{const j=await workoutEndpoint('summary',{date:today(),month});renderWorkoutSummary(j.summary)}
-  catch(e){$('workoutNextName').textContent='Тренировки недоступны';$('workoutNextMeta').textContent=e.message;$('workoutHomeTitle').textContent='Тренировки недоступны';$('workoutHomeMeta').textContent=e.message}
-}
-function shiftWorkoutMonth(delta){
-  const d=new Date(workoutCalendarMonth+'-01T12:00:00');d.setMonth(d.getMonth()+delta);workoutCalendarMonth=d.toISOString().slice(0,7);selectedWorkoutSession=null;$('workoutSelected').hidden=true;loadWorkouts(workoutCalendarMonth)
-}
-$('workoutMonthPrev').onclick=()=>shiftWorkoutMonth(-1);$('workoutMonthNext').onclick=()=>shiftWorkoutMonth(1);
-$('workoutCalendar').addEventListener('click',e=>{const cell=e.target.closest('[data-session-id]');if(cell)selectWorkoutSession(Number(cell.dataset.sessionId))});
-$('editWorkoutSchedule').onclick=()=>{renderWorkoutScheduleEditor();$('workoutScheduleStatus').textContent='';openModal('workoutScheduleModal')};
-$('saveWorkoutSchedule').onclick=async()=>{
-  const items=[...document.querySelectorAll('[data-schedule-day]')].map(x=>({day_id:Number(x.dataset.scheduleDay),weekday:Number(x.value)}));
-  const b=$('saveWorkoutSchedule');setBusy(b,true,'Сохраняю…');
-  try{await workoutEndpoint('save_schedule',{items});closeModal('workoutScheduleModal');await loadWorkouts();$('workoutStatus').textContent='✓ Расписание обновлено'}catch(e){$('workoutScheduleStatus').textContent='Ошибка: '+e.message}finally{setBusy(b,false)}
-};
-$('moveSelectedWorkout').onclick=async()=>{
-  if(!selectedWorkoutSession)return;const d=$('workoutMoveDate').value;if(!d)return alert('Выбери новую дату.');
-  const b=$('moveSelectedWorkout');setBusy(b,true,'Переношу…');
-  try{await workoutEndpoint('move',{id:Number(selectedWorkoutSession.id),date:d});$('workoutSelectedMessage').textContent=`✓ Перенесено на ${fullDate(d)}`;selectedWorkoutSession=null;$('workoutSelected').hidden=true;workoutCalendarMonth=d.slice(0,7);await loadWorkouts(workoutCalendarMonth)}catch(e){$('workoutSelectedMessage').textContent='Ошибка: '+e.message}finally{setBusy(b,false)}
-};
-async function deleteWorkoutSession(id,label='тренировку'){
-  if(!confirm(`Удалить ${label}? Подходы этой тренировки тоже будут удалены. Это действие нельзя отменить.`))return false;
-  await workoutEndpoint('delete',{id:Number(id)});selectedWorkoutSession=null;$('workoutSelected').hidden=true;await loadWorkouts();return true;
-}
-$('deleteSelectedWorkout').onclick=async()=>{if(!selectedWorkoutSession)return;try{await deleteWorkoutSession(selectedWorkoutSession.id,'эту тренировку')}catch(e){$('workoutSelectedMessage').textContent='Ошибка: '+e.message}};
-$('workoutHistory').addEventListener('click',async e=>{const id=e.target.dataset.deleteHistory;if(!id)return;try{await deleteWorkoutSession(Number(id),'эту запись тренировки')}catch(err){alert('Ошибка: '+err.message)}});
-$('startSelectedWorkout').onclick=async()=>{
-  if(!selectedWorkoutSession)return;const b=$('startSelectedWorkout');setBusy(b,true,'Открываю…');
-  try{let sid=Number(selectedWorkoutSession.id);if(selectedWorkoutSession.status!=='in_progress'){const j=await workoutEndpoint('start',{session_id:sid,date:selectedWorkoutSession.scheduled_date});sid=Number(j.session_id||sid)}await openWorkoutSession(sid)}catch(e){$('workoutSelectedMessage').textContent='Ошибка: '+e.message}finally{setBusy(b,false)}
-};
-$('startWorkout').onclick=async()=>{
-  const b=$('startWorkout');setBusy(b,true,'Открываю…');
-  try{
-    const inprog=workoutSummary?.in_progress||null,todaySession=workoutSummary?.today_session||null,overdue=workoutSummary?.overdue_sessions?.[0]||null,planned=workoutSummary?.planned_session||null;
-    if(inprog){await openWorkoutSession(Number(inprog.id));return}
-    if(todaySession){const j=await workoutEndpoint('start',{session_id:Number(todaySession.id),date:today()});await openWorkoutSession(Number(j.session_id||todaySession.id));return}
-    if(overdue){await workoutEndpoint('move',{id:Number(overdue.id),date:today()});$('workoutStatus').textContent='✓ Пропущенная тренировка перенесена на сегодня';await loadWorkouts();return}
-    if(planned){workoutCalendarMonth=planned.scheduled_date.slice(0,7);await loadWorkouts(workoutCalendarMonth);selectWorkoutSession(Number(planned.id));document.querySelector('.workoutCalendarCard')?.scrollIntoView({behavior:'smooth',block:'start'});return}
-    document.querySelector('.workoutCalendarCard')?.scrollIntoView({behavior:'smooth',block:'start'});
-  }catch(e){$('workoutStatus').textContent='Ошибка: '+e.message}finally{setBusy(b,false)}
-};
-function renderRestTimer(){
-  const el=$('restTimerValue');if(!el)return;const left=Math.max(0,Math.ceil((restTimerEnd-Date.now())/1000));const m=String(Math.floor(left/60)).padStart(2,'0'),s=String(left%60).padStart(2,'0');el.textContent=`${m}:${s}`;if(left<=0&&restTimerInterval){clearInterval(restTimerInterval);restTimerInterval=null}
-}
-function startRestTimer(seconds=90){restTimerEnd=Date.now()+seconds*1000;if(restTimerInterval)clearInterval(restTimerInterval);renderRestTimer();restTimerInterval=setInterval(renderRestTimer,500)}
-function sessionExerciseHtml(e){
-  const sets=e.sets||[],prev=e.previous_sets||[];let rows='';const n=Number(e.target_sets||3);
-  for(let i=1;i<=n;i++){
-    const cur=sets.find(x=>Number(x.set_no)===i)||{},pr=prev.find(x=>Number(x.set_no)===i)||{};const weight=cur.weight_kg!==null&&cur.weight_kg!==undefined?cur.weight_kg:(e.default_weight!==null&&e.default_weight!==undefined?e.default_weight:'');
-    rows+=`<div class="setRow ${cur.completed_at?'done':''}" data-set-row="${e.id}-${i}"><div class="setNo">${i}</div><input class="setInput" inputmode="decimal" data-set-weight="${e.id}-${i}" value="${esc(weight)}" placeholder="${pr.weight_kg??'кг'}"><input class="setInput" inputmode="numeric" data-set-reps="${e.id}-${i}" value="${esc(cur.reps??'')}" placeholder="${pr.reps??e.target_reps??'повт.'}"><button class="setDoneBtn" data-save-set="${e.id}-${i}" data-exercise="${e.id}" data-setno="${i}">${cur.completed_at?'✓':'○'}</button></div>`;
-  }
-  const prevText=prev.length?'Прошлый раз: '+prev.map(x=>`${x.weight_kg??'—'}×${x.reps??'—'}`).join(' · '):'Предыдущих данных пока нет.';
-  return `<div class="sessionExercise"><div class="sessionExerciseHead"><b>${esc(e.name)}</b><span>План: ${Number(e.target_sets||0)} × ${esc(e.target_reps||'—')}${e.default_weight?` · ${Number(e.default_weight)} кг`:''}${e.notes?` · ${esc(e.notes)}`:''}</span></div><div class="setRows">${rows}</div><div class="prevHint">${esc(prevText)}</div></div>`;
-}
-async function openWorkoutSession(id){
-  const j=await workoutEndpoint('session',{id:Number(id)});currentWorkoutSession=j.session;$('workoutSessionTitle').textContent=currentWorkoutSession.day_name;$('workoutSessionMeta').textContent=`${fullDate(currentWorkoutSession.scheduled_date)} · ${currentWorkoutSession.exercises.length} упражнений`;$('workoutSessionExercises').innerHTML=currentWorkoutSession.exercises.map(sessionExerciseHtml).join('');$('workoutSessionStatus').textContent='';openModal('workoutSessionModal')
-}
-$('workoutSessionExercises').addEventListener('click',async e=>{
-  const btn=e.target.closest('[data-save-set]');if(!btn)return;const ex=Number(btn.dataset.exercise),setno=Number(btn.dataset.setno),key=`${ex}-${setno}`;const w=document.querySelector(`[data-set-weight="${key}"]`)?.value||'';const r=document.querySelector(`[data-set-reps="${key}"]`)?.value||'';if(!r)return alert('Укажи повторы.');btn.disabled=true;
-  try{await workoutEndpoint('save_set',{session_id:Number(currentWorkoutSession.id),exercise_id:ex,set_no:setno,weight_kg:w===''?null:Number(String(w).replace(',','.')),reps:Number(r)});const row=document.querySelector(`[data-set-row="${key}"]`);if(row)row.classList.add('done');btn.textContent='✓';startRestTimer(90)}catch(err){alert('Ошибка: '+err.message)}finally{btn.disabled=false}
-});
-$('completeWorkout').onclick=async()=>{
-  if(!currentWorkoutSession||!confirm('Завершить тренировку? Результаты подходов сохранятся в историю.'))return;const b=$('completeWorkout');setBusy(b,true,'Завершаю…');
-  try{await workoutEndpoint('complete',{session_id:Number(currentWorkoutSession.id)});$('workoutSessionStatus').textContent='✓ Тренировка завершена';closeModal('workoutSessionModal');currentWorkoutSession=null;await loadWorkouts()}catch(e){$('workoutSessionStatus').textContent='Ошибка: '+e.message}finally{setBusy(b,false)}
-};
+// Workouts UI lives in assets/workouts.js (window.Workouts)
+async function loadWorkouts(month){if(window.Workouts)return Workouts.load(month)}
 function renderJournalHub(){
   const td=daily.find(x=>x.date===today());
   $('journalHubDailyTitle').textContent=td?'Сегодня заполнено ✓':'Сегодня ещё не заполнено';
