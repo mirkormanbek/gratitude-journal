@@ -16,7 +16,7 @@ function tout(array $x, int $status=200): void {
     exit;
 }
 function tbody(): array {
-    $raw=file_get_contents('php://input');
+    $raw=defined('GROWTH_CI_BODY')?GROWTH_CI_BODY:file_get_contents('php://input');
     $x=json_decode($raw ?: '{}', true);
     return is_array($x)?$x:[];
 }

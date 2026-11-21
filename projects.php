@@ -18,7 +18,7 @@ function pout($data, $status=200) {
     exit;
 }
 function pbody() {
-    $raw = file_get_contents('php://input');
+    $raw = defined('GROWTH_CI_BODY') ? GROWTH_CI_BODY : file_get_contents('php://input');
     $x = json_decode($raw ? $raw : '{}', true);
     return is_array($x) ? $x : array();
 }
@@ -119,6 +119,45 @@ try {
         unset($p);
 
         pout(array('ok'=>true,'projects'=>$projects,'task_project_map'=>$map));
+    }
+
+    if ($action==='get') {
+        $id=(int)(isset($x['id'])?$x['id']:0);
+        $p=projectById($pdo,$id);
+        if(!$p) throw new RuntimeException('Проект не найден.');
+        $today=isset($x['date']) && pdate($x['date']) ? (string)$x['date'] : date('Y-m-d');
+        $s=$pdo->prepare("SELECT id,title,due_date,status,priority,source_type,completed_at,created_at FROM tasks WHERE project_id=?
+            ORDER BY status='done', CASE WHEN status='done' THEN completed_at END DESC, due_date, priority, id");
+        $s->execute(array($id));
+        $tasks=$s->fetchAll();
+        $done=0;$open=0;$overdue=0;$next=null;
+        foreach($tasks as &$t){
+            $t['id']=(int)$t['id'];$t['priority']=(int)$t['priority'];
+            if($t['status']==='done'){$done++;continue;}
+            $open++;
+            if((string)$t['due_date']<$today)$overdue++;
+            if($next===null)$next=$t['id'];
+        }
+        unset($t);
+        $p['id']=(int)$p['id'];
+        $p['total_tasks']=count($tasks);$p['done_tasks']=$done;$p['active_tasks']=$open;$p['overdue_tasks']=$overdue;
+        $p['progress_percent']=count($tasks)?(int)round($done/count($tasks)*100):0;
+        $p['next_task_id']=$next;
+        pout(array('ok'=>true,'project'=>$p,'tasks'=>$tasks));
+    }
+
+    if ($action==='add_task') {
+        $pid=(int)(isset($x['project_id'])?$x['project_id']:0);
+        if(!projectById($pdo,$pid)) throw new RuntimeException('Проект не найден.');
+        $title=ptext(isset($x['title'])?$x['title']:'',500);
+        if($title==='') throw new RuntimeException('Шаг пустой.');
+        $due=isset($x['due_date'])?(string)$x['due_date']:'';
+        if($due===''||!pdate($due)) $due=date('Y-m-d');
+        $prio=(int)(isset($x['priority'])?$x['priority']:3);
+        if(!in_array($prio,array(1,2,3),true)) $prio=3;
+        $pdo->prepare("INSERT INTO tasks(title,due_date,status,priority,project_id,source_type,sort_order) VALUES(?,?,'pending',?,?,'manual',0)")
+            ->execute(array($title,$due,$prio,$pid));
+        pout(array('ok'=>true,'id'=>(int)$pdo->lastInsertId()));
     }
 
     if ($action==='add') {

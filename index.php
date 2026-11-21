@@ -394,6 +394,7 @@ body.modalOpen{overflow:hidden}
 </style>
 <link rel="stylesheet" href="assets/ui.css?v=<?=@filemtime(__DIR__.'/assets/ui.css')?>">
 <link rel="stylesheet" href="assets/notes.css?v=<?=@filemtime(__DIR__.'/assets/notes.css')?>">
+<link rel="stylesheet" href="assets/projects.css?v=<?=@filemtime(__DIR__.'/assets/projects.css')?>">
 <link rel="stylesheet" href="assets/workouts.css?v=<?=@filemtime(__DIR__.'/assets/workouts.css')?>">
 </head>
 <body>
@@ -741,24 +742,6 @@ body.modalOpen{overflow:hidden}
   </div>
 </div>
 
-<div class="modal" id="projectModal" aria-hidden="true">
-  <div class="modalSheet smallSheet" role="dialog" aria-modal="true" aria-labelledby="projectModalTitle">
-    <div class="modalHead">
-      <div><div class="eyebrow">Проект</div><h2 id="projectModalTitle">Новый проект</h2></div>
-      <button class="modalClose" data-close="projectModal" aria-label="Закрыть">×</button>
-    </div>
-    <div class="modalBody">
-      <input type="hidden" id="p_id">
-      <div class="field"><label>Название проекта</label><input id="p_name" maxlength="180" placeholder="Например: Запустить оптовый канал продаж"></div>
-      <div class="field"><label>Какой результат считаем успехом?</label><textarea id="p_outcome" maxlength="1200" placeholder="Например: получить первых 5 активных оптовых клиентов"></textarea></div>
-      <div class="field"><label>Дедлайн <span class="mutedInline">необязательно</span></label><input id="p_deadline" type="date"></div>
-      <div class="projectRule">Если дело нельзя закрыть одной галочкой — это проект. Внутри него создаём конкретные следующие действия.</div>
-      <div class="btnrow"><button class="btn primary" id="saveProject">Создать проект</button><button class="btn secondary" data-close="projectModal">Отмена</button></div>
-      <div class="status" id="projectStatus"></div>
-    </div>
-  </div>
-</div>
-
 <div class="modal" id="quranModal" aria-hidden="true">
   <div class="modalSheet" role="dialog" aria-modal="true" aria-labelledby="quranModalTitle">
     <div class="modalHead">
@@ -853,6 +836,7 @@ body.modalOpen{overflow:hidden}
 
 <script src="assets/ui.js?v=<?=@filemtime(__DIR__.'/assets/ui.js')?>"></script>
 <script src="assets/notes.js?v=<?=@filemtime(__DIR__.'/assets/notes.js')?>"></script>
+<script src="assets/projects.js?v=<?=@filemtime(__DIR__.'/assets/projects.js')?>"></script>
 <script src="assets/workouts.js?v=<?=@filemtime(__DIR__.'/assets/workouts.js')?>"></script>
 <script>
 const $=id=>document.getElementById(id);
@@ -1055,44 +1039,14 @@ $('taskList').addEventListener('click',async e=>{
 $('taskHomeList').addEventListener('change',async e=>{const id=e.target.dataset.homeTaskToggle;if(!id)return;try{await taskEndpoint('toggle',{id:Number(id),done:true});await loadTasks()}catch(err){alert('Ошибка: '+err.message)}});
 
 // ----- Projects -----
-function resetProjectForm(){
-  $('p_id').value='';$('p_name').value='';$('p_outcome').value='';$('p_deadline').value='';$('projectModalTitle').textContent='Новый проект';$('saveProject').textContent='Создать проект';$('projectStatus').textContent='';
-}
-$('openProjectModal').onclick=()=>{resetProjectForm();openModal('projectModal');setTimeout(()=>$('p_name').focus(),100)};
-$('saveProject').onclick=async()=>{
-  const id=Number($('p_id').value||0),name=$('p_name').value.trim(),outcome=$('p_outcome').value.trim(),deadline=$('p_deadline').value;
-  if(!name)return alert('Напиши название проекта.');
-  const b=$('saveProject');setBusy(b,true,'Сохраняю…');
-  try{await projectEndpoint(id?'update':'add',{id,name,outcome,deadline});closeModal('projectModal');await loadTasks()}catch(e){$('projectStatus').textContent='Ошибка: '+e.message}finally{setBusy(b,false)}
-};
+// Projects UI lives in assets/projects.js (window.Projects)
+$('openProjectModal').onclick=()=>{if(window.Projects)Projects.edit(null)};
 function renderProjects(){
   document.querySelectorAll('[data-project-view]').forEach(b=>b.classList.toggle('active',b.dataset.projectView===projectView));
   const list=projects.filter(p=>p.status===projectView);
-  if(!list.length){$('projectList').innerHTML='<div class="taskEmptySlim">Здесь пока нет проектов.</div>';return}
-  $('projectList').innerHTML=list.map(p=>{
-    const total=Number(p.total_tasks||0),done=Number(p.done_tasks||0),pct=Number(p.progress_percent||0),next=p.next_task;
-    return `<div class="card projectCard">
-      <div class="projectHead"><div><div class="projectName">${esc(p.name)}</div>${p.outcome?`<div class="projectOutcome">${esc(p.outcome)}</div>`:''}</div><span class="badge">${p.status==='active'?'Активный':p.status==='paused'?'Пауза':'Завершён'}</span></div>
-      <div class="projectProgress"><div class="projectBar"><i style="width:${Math.max(0,Math.min(100,pct))}%"></i></div><b>${done} / ${total}</b></div>
-      <div class="projectMeta"><span>${pct}% выполнено</span>${Number(p.overdue_tasks||0)?`<span class="errorText">${p.overdue_tasks} просрочено</span>`:''}${p.deadline?`<span>до ${shortDate(p.deadline)}</span>`:''}</div>
-      <div class="projectNext"><span>Следующее действие</span><b>${next?esc(next.title):'Добавь первое конкретное действие.'}</b></div>
-      <div class="projectActions"><button class="btn secondary" data-project-open="${p.id}">Задачи</button><button class="btn secondary" data-project-next="${p.id}">+ Действие</button>
-        <details class="projectMore"><summary>•••</summary><div class="projectMoreMenu"><button class="taskSmall" data-project-edit="${p.id}">Изменить</button>${p.status==='active'?`<button class="taskSmall" data-project-status="${p.id}" data-status="paused">Поставить на паузу</button>`:''}${p.status==='paused'?`<button class="taskSmall" data-project-status="${p.id}" data-status="active">Возобновить</button>`:''}${p.status!=='done'?`<button class="taskSmall" data-project-status="${p.id}" data-status="done">Завершить</button>`:`<button class="taskSmall" data-project-status="${p.id}" data-status="active">Вернуть в активные</button>`}<button class="taskSmall danger" data-project-delete="${p.id}">Удалить</button></div></details>
-      </div>
-    </div>`
-  }).join('');
+  if(window.Projects)Projects.renderList($('projectList'),list);
 }
 document.querySelectorAll('[data-project-view]').forEach(b=>b.onclick=()=>{projectView=b.dataset.projectView;renderProjects()});
-$('projectList').addEventListener('click',async e=>{
-  const open=e.target.dataset.projectOpen,next=e.target.dataset.projectNext,edit=e.target.dataset.projectEdit,st=e.target.dataset.projectStatus,del=e.target.dataset.projectDelete;
-  try{
-    if(open){projectFilter=Number(open);$('taskProjectFilter').value=String(projectFilter);taskView='active';setWorkspace('tasks');renderTasks()}
-    if(next){resetTaskForm();$('t_project').value=String(Number(next));$('t_date').value=today();openModal('taskModal');setTimeout(()=>$('t_title').focus(),100)}
-    if(edit){const p=projects.find(x=>Number(x.id)===Number(edit));if(!p)return;resetProjectForm();$('p_id').value=p.id;$('p_name').value=p.name||'';$('p_outcome').value=p.outcome||'';$('p_deadline').value=p.deadline||'';$('projectModalTitle').textContent='Изменить проект';$('saveProject').textContent='Сохранить';openModal('projectModal')}
-    if(st){await projectEndpoint('status',{id:Number(st),status:e.target.dataset.status});await loadTasks()}
-    if(del&&confirm('Удалить проект? Задачи останутся, но будут без проекта.')){await projectEndpoint('delete',{id:Number(del)});if(projectFilter===Number(del))projectFilter=0;await loadTasks()}
-  }catch(err){alert('Ошибка: '+err.message)}
-});
 function setWorkspace(name){
   $('tasksWorkspace').hidden=name!=='tasks';$('projectsWorkspace').hidden=name!=='projects';
   document.querySelectorAll('[data-workspace]').forEach(b=>b.classList.toggle('active',b.dataset.workspace===name));

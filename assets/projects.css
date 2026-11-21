@@ -1,0 +1,39 @@
+/* Projects service */
+.pj-card{background:var(--card);border:1px solid #2a2a2e;border-radius:18px;padding:14px;margin-bottom:10px;cursor:pointer}
+.pj-card:active{background:#202023}
+.pj-top{display:flex;align-items:flex-start;gap:10px}
+.pj-top .grow{flex:1;min-width:0}
+.pj-name{font-size:17px;font-weight:700;line-height:1.3}
+.pj-out{font-size:13px;color:var(--muted);margin-top:3px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pj-bar{height:5px;background:#2a2a2e;border-radius:5px;overflow:hidden;margin:12px 0 6px}
+.pj-bar i{display:block;height:100%;background:var(--blue);border-radius:5px}
+.pj-bar.full i{background:var(--green)}
+.pj-meta{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.pj-meta .bad{color:#ff7b73}
+.pj-next{display:flex;align-items:center;gap:10px;margin-top:12px;padding:10px 12px;background:#151517;border:1px solid #2a2a2e;border-radius:13px}
+.pj-next .lbl{font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--blue2)}
+.pj-next .tt{font-size:14px;font-weight:600;line-height:1.35;margin-top:2px}
+.pj-next .grow{flex:1;min-width:0}
+.pj-check{width:28px;height:28px;border-radius:50%;border:2px solid #4a4a50;background:transparent;flex:0 0 auto;cursor:pointer;color:transparent;font-size:15px;display:flex;align-items:center;justify-content:center;padding:0}
+.pj-check:hover{border-color:var(--green)}
+.pj-check.on{background:var(--green);border-color:var(--green);color:#03200b}
+.pj-empty-next{font-size:13px;color:var(--blue2);font-weight:650}
+
+/* Project page */
+.pj-hero .pj-name{font-size:24px;letter-spacing:-.02em}
+.pj-outcome{margin-top:10px;padding:12px;border-radius:13px;background:rgba(10,132,255,.08);border:1px solid rgba(10,132,255,.2);font-size:14px;line-height:1.45}
+.pj-outcome b{display:block;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--blue2);margin-bottom:3px}
+.pj-task{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid #26262a;min-height:54px}
+.pj-task:last-child{border-bottom:0}
+.pj-task .grow{flex:1;min-width:0;cursor:pointer}
+.pj-task .t{font-size:15px;line-height:1.35}
+.pj-task .s{font-size:12px;color:var(--muted);margin-top:2px}
+.pj-task.done .t{color:var(--muted);text-decoration:line-through}
+.pj-task.next{background:rgba(10,132,255,.07)}
+.pj-task .s .bad{color:#ff7b73}
+.pj-add{display:flex;gap:8px;padding:10px;border-top:1px solid #26262a;background:#18181a}
+.pj-add input{flex:1;min-width:0;background:#121214;border:1px solid #333338;border-radius:11px;color:#fff;padding:11px 12px;font-size:16px;outline:none}
+.pj-add input:focus{border-color:var(--blue)}
+.pj-add select{background:#121214;border:1px solid #333338;border-radius:11px;color:#fff;padding:0 8px;font-size:13px;max-width:104px}
+.pj-add button{border:0;background:var(--blue);color:#fff;border-radius:11px;padding:0 14px;font-size:20px;font-weight:700;cursor:pointer}
+.projectTop .btn{white-space:nowrap;flex:0 0 auto}
