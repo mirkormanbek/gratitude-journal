@@ -103,7 +103,7 @@ $j = call('workouts.php', 'set_mode', ['mode' => 'rotation']);
 $sat = date('Y-m-d', strtotime($mon . ' +5 days'));
 $j = call('workouts.php', 'summary', ['date' => $sat, 'month' => $month]);
 $sum = $j['summary'] ?? [];
-check(($sum['overdue_sessions'] ?? [1]) === [] && ($sum['today_session'] ?? 1) === null, 'rotation: no missed / no scheduled', $sum['overdue_sessions'] ?? null);
+check(($sum['overdue_sessions'] ?? [1]) === [] && array_key_exists('today_session', $sum) && $sum['today_session'] === null, 'rotation: no missed / no scheduled', $sum['overdue_sessions'] ?? null);
 check(!in_array('planned', array_column($sum['calendar'] ?? [], 'status'), true), 'rotation: calendar shows no planned placeholders');
 check((int)($sum['next_day']['day_order'] ?? 0) === 2, 'rotation: after День 1 comes День 2', $sum['next_day']['name'] ?? null);
 $j = call('workouts.php', 'start_next', ['date' => $sat]);
