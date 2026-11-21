@@ -5,6 +5,6 @@ Options -Indexes
 
 # Repository-only files (deployed by Plesk Git) are not web-accessible
 RedirectMatch 404 ^/(docs|tools|migrations|\.github)(/|$)
-<FilesMatch "^(CLAUDE\.md|README\.md|README\.txt|migrate\.php|\.gitignore)$">
+<FilesMatch "^(CLAUDE\.md|README\.md|README\.txt|migrate\.php|migrations_lib\.php|\.gitignore|\.migrations_stamp)$">
     Require all denied
 </FilesMatch>

@@ -99,7 +99,7 @@ Production runs **PHP 7.4.33** (verified in Plesk 2026-11-21). No PHP 8 syntax o
 7. Report exactly which files changed and which files must not be replaced.
 
 ## Delivery workflow (automated)
-- Work on a branch, open a Pull Request; never push directly to `main`.
+- Push small, self-contained commits to `main` (or a branch + PR when available); CI gates every release.
 - Merge to `main` → checks → `production` branch → Plesk Git deploys to the site (see `docs/DEPLOY.md`). Never push to `production` by hand.
 - The repository is PUBLIC: never commit secrets, personal diary data or DB dumps.
 - Every schema change is a new file in `migrations/` (never edit an applied one).

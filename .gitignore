@@ -16,3 +16,6 @@ error_log
 Thumbs.db
 .idea/
 .vscode/
+
+# Migration state written by the app
+.migrations_stamp

@@ -24,6 +24,10 @@ try {
     exit('Ошибка подключения к базе данных.');
 }
 
+// Apply newly deployed DB migrations (cheap file check; see migrations_lib.php).
+require_once __DIR__ . '/migrations_lib.php';
+growth_auto_migrate($pdo);
+
 session_name($config['session_name'] ?? 'growth_journal_session');
 session_set_cookie_params([
     'httponly' => true,

@@ -20,12 +20,23 @@ jobs:
   check:
     name: Checks (PHP 7.4, secrets, migrations)
     runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.6
+        env:
+          MARIADB_ROOT_PASSWORD: ci
+          MARIADB_DATABASE: ci
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s --health-timeout=5s --health-retries=20
     steps:
       - uses: actions/checkout@v4
 
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '7.4'
+          extensions: pdo_mysql
           tools: none
 
       - name: PHP syntax on 7.4 (same as production 7.4.33)
@@ -51,6 +62,9 @@ jobs:
         run: |
           bad=$(ls -A migrations | grep -vE '^([0-9]{4}_[a-z0-9_]+\.(sql|php)|README\.md|\.htaccess)$' || true)
           if [ -n "$bad" ]; then echo "::error::Bad migration names: $bad"; exit 1; fi
+
+      - name: Migrations apply on MariaDB and are idempotent
+        run: php tools/test_migrations.php
 
   release:
     name: Release to production branch
