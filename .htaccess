@@ -8,3 +8,8 @@ RedirectMatch 404 ^/(docs|tools|migrations|\.github)(/|$)
 <FilesMatch "^(CLAUDE\.md|README\.md|README\.txt|migrate\.php|migrations_lib\.php|\.gitignore|\.migrations_stamp)$">
     Require all denied
 </FilesMatch>
+
+# Old manual backups left on the server (not in git) must not be downloadable
+<FilesMatch "(_backup|backup_)[^/]*\.(php|html?)$|\.(zip|sql|gz|bak)$">
+    Require all denied
+</FilesMatch>
