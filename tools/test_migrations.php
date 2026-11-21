@@ -11,7 +11,7 @@ $first = growth_run_migrations($pdo);
 echo "first run: " . (implode(', ', $first) ?: '(none)') . "\n";
 $second = growth_run_migrations($pdo);
 if ($second) {
-    fwrite(STDERR, "second run applied again: " . implode(', ', $second) . "\n");
+    echo "::error::second run applied again: " . implode(', ', $second) . "\n";
     exit(1);
 }
 @unlink(growth_migrations_stamp_file());

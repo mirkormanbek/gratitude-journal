@@ -17,7 +17,7 @@ function wout($data,$status=200){
     exit;
 }
 function wbody(){
-    $raw=file_get_contents('php://input');
+    $raw=defined('GROWTH_CI_BODY')?GROWTH_CI_BODY:file_get_contents('php://input');
     $x=json_decode($raw ? $raw : '{}',true);
     return is_array($x)?$x:array();
 }
@@ -38,12 +38,12 @@ function activeProgram($pdo){
     if(!$p)throw new RuntimeException('Активная программа тренировок не найдена.');
     return $p;
 }
-function daysForProgram($pdo,$programId){
+function daysForProgram($pdo,$programId,$withArchived=false){
     $s=$pdo->prepare("SELECT * FROM workout_days WHERE program_id=? ORDER BY day_order");
     $s->execute(array((int)$programId));
     $days=$s->fetchAll();
     foreach($days as &$d){
-        $e=$pdo->prepare("SELECT * FROM workout_exercises WHERE day_id=? ORDER BY exercise_order,id");
+        $e=$pdo->prepare("SELECT * FROM workout_exercises WHERE day_id=?".($withArchived?"":" AND is_archived=0")." ORDER BY exercise_order,id");
         $e->execute(array((int)$d['id']));
         $d['exercises']=$e->fetchAll();
         $d['exercise_count']=count($d['exercises']);
@@ -244,25 +244,146 @@ function getSession($pdo,$id){
     $s->execute(array((int)$id));$session=$s->fetch();
     if(!$session)throw new RuntimeException('Тренировка не найдена.');
 
-    $e=$pdo->prepare("SELECT * FROM workout_exercises WHERE day_id=? ORDER BY exercise_order,id");
-    $e->execute(array((int)$session['day_id']));$exercises=$e->fetchAll();
+    // Active exercises of the day + archived ones that already have sets in this session.
+    $e=$pdo->prepare("SELECT * FROM workout_exercises e WHERE e.day_id=? AND (e.is_archived=0 OR EXISTS(SELECT 1 FROM workout_sets x WHERE x.session_id=? AND x.exercise_id=e.id)) ORDER BY e.exercise_order,e.id");
+    $e->execute(array((int)$session['day_id'],(int)$id));$exercises=$e->fetchAll();
+    $before=$session['completed_at']?$session['completed_at']:($session['started_at']?$session['started_at']:date('Y-m-d H:i:s'));
     foreach($exercises as &$ex){
         $c=$pdo->prepare("SELECT set_no,weight_kg,reps,completed_at FROM workout_sets WHERE session_id=? AND exercise_id=? ORDER BY set_no");
         $c->execute(array((int)$id,(int)$ex['id']));$ex['sets']=$c->fetchAll();
 
-        $p=$pdo->prepare("SELECT ws2.id FROM workout_sessions ws2
-          WHERE ws2.day_id=? AND ws2.status='done' AND ws2.id<>? AND ws2.completed_at < COALESCE(?,NOW())
-          ORDER BY ws2.completed_at DESC,ws2.id DESC LIMIT 1");
-        $p->execute(array((int)$session['day_id'],(int)$id,$session['completed_at']?$session['completed_at']:$session['started_at']));
-        $prevId=$p->fetchColumn();$ex['previous_sets']=array();
-        if($prevId){
-            $ps=$pdo->prepare("SELECT set_no,weight_kg,reps FROM workout_sets WHERE session_id=? AND exercise_id=? AND completed_at IS NOT NULL ORDER BY set_no");
-            $ps->execute(array((int)$prevId,(int)$ex['id']));$ex['previous_sets']=$ps->fetchAll();
+        // Previous result = last finished session with this exercise NAME (any day of the program).
+        $ids=exerciseIdsByName($pdo,(string)$ex['name']);
+        $ex['previous_sets']=array();$ex['previous_date']=null;$ex['best']=null;
+        if($ids){
+            $in=implode(',',array_map('intval',$ids));
+            $p=$pdo->prepare("SELECT ws2.id,ws2.scheduled_date FROM workout_sessions ws2
+              WHERE ws2.status='done' AND ws2.id<>? AND ws2.completed_at <= ?
+                AND EXISTS(SELECT 1 FROM workout_sets x WHERE x.session_id=ws2.id AND x.exercise_id IN ($in) AND x.completed_at IS NOT NULL)
+              ORDER BY ws2.completed_at DESC,ws2.id DESC LIMIT 1");
+            $p->execute(array((int)$id,$before));
+            $prev=$p->fetch();
+            if($prev){
+                $ps=$pdo->prepare("SELECT set_no,weight_kg,reps FROM workout_sets WHERE session_id=? AND exercise_id IN ($in) AND completed_at IS NOT NULL ORDER BY set_no");
+                $ps->execute(array((int)$prev['id']));$ex['previous_sets']=$ps->fetchAll();
+                $ex['previous_date']=(string)$prev['scheduled_date'];
+            }
+            $b=$pdo->prepare("SELECT x.weight_kg,x.reps FROM workout_sets x JOIN workout_sessions s ON s.id=x.session_id
+              WHERE x.exercise_id IN ($in) AND x.completed_at IS NOT NULL AND s.id<>? AND x.weight_kg IS NOT NULL
+              ORDER BY x.weight_kg DESC,x.reps DESC LIMIT 1");
+            $b->execute(array((int)$id));$best=$b->fetch();
+            if($best)$ex['best']=array('weight_kg'=>(float)$best['weight_kg'],'reps'=>(int)$best['reps']);
         }
+        $ex['rest_seconds']=isset($ex['rest_seconds'])&&$ex['rest_seconds']!==null?(int)$ex['rest_seconds']:90;
     }
     unset($ex);
     $session['id']=(int)$session['id'];$session['exercises']=$exercises;
     return $session;
+}
+function exerciseKey($name){
+    $n=mb_strtolower(trim((string)$name),'UTF-8');
+    $n=str_replace('ё','е',$n);
+    return preg_replace('/\s+/u',' ',$n);
+}
+function exerciseIdsByName($pdo,$name){
+    static $all=null;
+    if($all===null){$all=$pdo->query("SELECT id,name FROM workout_exercises")->fetchAll();}
+    $key=exerciseKey($name);$ids=array();
+    foreach($all as $r)if(exerciseKey($r['name'])===$key)$ids[]=(int)$r['id'];
+    return $ids;
+}
+/** Epley estimated 1RM; reps capped at 15 to keep high-rep sets sane. */
+function e1rm($w,$r){
+    if($w===null||$w<=0||$r<=0)return 0.0;
+    return round((float)$w*(1+min((int)$r,15)/30),1);
+}
+function sessionDuration($a,$b){
+    if(!$a||!$b)return null;$x=strtotime($a);$y=strtotime($b);
+    if(!$x||!$y||$y<$x)return null;$m=(int)round(($y-$x)/60);
+    return $m>0&&$m<600?$m:null;
+}
+function workoutStats($pdo,$today){
+    $program=activeProgram($pdo);$pid=(int)$program['id'];$target=(int)$program['target_per_week'];
+    $rows=$pdo->prepare("SELECT s.id,s.scheduled_date,s.started_at,s.completed_at,d.name day_name,
+        x.exercise_id,e.name ex_name,x.set_no,x.weight_kg,x.reps
+      FROM workout_sessions s JOIN workout_days d ON d.id=s.day_id
+      LEFT JOIN workout_sets x ON x.session_id=s.id AND x.completed_at IS NOT NULL
+      LEFT JOIN workout_exercises e ON e.id=x.exercise_id
+      WHERE s.program_id=? AND s.status='done'
+      ORDER BY s.scheduled_date,s.id,x.exercise_id,x.set_no");
+    $rows->execute(array($pid));
+    $sessions=array();$ex=array();
+    foreach($rows->fetchAll() as $r){
+        $sid=(int)$r['id'];
+        if(!isset($sessions[$sid]))$sessions[$sid]=array('id'=>$sid,'date'=>(string)$r['scheduled_date'],'day_name'=>(string)$r['day_name'],
+            'minutes'=>sessionDuration($r['started_at'],$r['completed_at']),'sets'=>0,'volume'=>0.0,'reps'=>0,'prs'=>0);
+        if($r['exercise_id']===null)continue;
+        $w=$r['weight_kg']!==null?(float)$r['weight_kg']:null;$reps=(int)$r['reps'];
+        $sessions[$sid]['sets']++;$sessions[$sid]['reps']+=$reps;
+        if($w!==null)$sessions[$sid]['volume']+=$w*$reps;
+        $key=exerciseKey($r['ex_name']);
+        if(!isset($ex[$key]))$ex[$key]=array('name'=>trim((string)$r['ex_name']),'points'=>array());
+        if(!isset($ex[$key]['points'][$sid]))$ex[$key]['points'][$sid]=array('session_id'=>$sid,'date'=>(string)$r['scheduled_date'],'top_weight'=>null,'top_reps'=>0,'e1rm'=>0.0,'volume'=>0.0,'sets'=>array());
+        $pt=&$ex[$key]['points'][$sid];
+        $pt['sets'][]=array('w'=>$w,'r'=>$reps);
+        if($w!==null){$pt['volume']+=$w*$reps;if($pt['top_weight']===null||$w>$pt['top_weight']||($w==$pt['top_weight']&&$reps>$pt['top_reps'])){$pt['top_weight']=$w;$pt['top_reps']=$reps;}}
+        else if($reps>$pt['top_reps']&&$pt['top_weight']===null)$pt['top_reps']=$reps;
+        $pt['e1rm']=max($pt['e1rm'],e1rm($w,$reps));
+        unset($pt);
+    }
+    // Per exercise: trend, best, PR detection
+    $exercises=array();
+    foreach($ex as $key=>$e){
+        $pts=array_values($e['points']);$best=0.0;$bestW=null;$bestReps=0;$prCount=0;
+        foreach($pts as $i=>$p){
+            $score=$p['e1rm']>0?$p['e1rm']:(float)$p['top_reps'];
+            $isPr=$i>0&&$score>$best+0.001;
+            if($isPr){$prCount++;$sessions[$p['session_id']]['prs']++;}
+            $pts[$i]['pr']=$isPr;
+            if($score>$best)$best=$score;
+            if($p['top_weight']!==null&&($bestW===null||$p['top_weight']>$bestW))$bestW=$p['top_weight'];
+            if($p['top_reps']>$bestReps)$bestReps=$p['top_reps'];
+        }
+        $last=end($pts);$first=reset($pts);
+        $exercises[]=array('key'=>$key,'name'=>$e['name'],'sessions'=>count($pts),'last_date'=>$last['date'],
+            'best_weight'=>$bestW,'best_reps'=>$bestReps,'best_e1rm'=>$best,
+            'last_top_weight'=>$last['top_weight'],'last_top_reps'=>$last['top_reps'],'last_pr'=>!empty($last['pr']),
+            'change_e1rm'=>($first['e1rm']>0&&$last['e1rm']>0)?round($last['e1rm']-$first['e1rm'],1):null,
+            'bodyweight'=>$bestW===null,'prs'=>$prCount,'points'=>$pts);
+    }
+    usort($exercises,function($a,$b){return strcmp($b['last_date'],$a['last_date'])?:strcmp($a['name'],$b['name']);});
+
+    // Weekly buckets (Mon..Sun), last 12 weeks
+    $mon=(new DateTimeImmutable($today))->modify('monday this week');
+    $weeks=array();
+    for($i=11;$i>=0;$i--){$ws=$mon->modify("-$i weeks")->format('Y-m-d');$weeks[$ws]=array('week'=>$ws,'count'=>0,'volume'=>0.0,'sets'=>0);}
+    $sessionList=array_values($sessions);
+    foreach($sessionList as $s){
+        $ws=(new DateTimeImmutable($s['date']))->modify('monday this week')->format('Y-m-d');
+        if(isset($weeks[$ws])){$weeks[$ws]['count']++;$weeks[$ws]['volume']+=$s['volume'];$weeks[$ws]['sets']+=$s['sets'];}
+    }
+    // Streak: consecutive full weeks (before the current one) meeting the target; current week counts if already met
+    $streak=0;$wk=array_values($weeks);
+    for($i=count($wk)-1;$i>=0;$i--){
+        $isCurrent=$i===count($wk)-1;
+        if($wk[$i]['count']>=$target){$streak++;continue;}
+        if($isCurrent)continue;
+        break;
+    }
+    $month=substr($today,0,7);$monthCount=0;$totalVol=0.0;$totalSets=0;$mins=array();
+    foreach($sessionList as $s){if(substr($s['date'],0,7)===$month)$monthCount++;$totalVol+=$s['volume'];$totalSets+=$s['sets'];if($s['minutes'])$mins[]=$s['minutes'];}
+    $from28=(new DateTimeImmutable($today))->modify('-27 days')->format('Y-m-d');$c28=0;
+    foreach($sessionList as $s)if($s['date']>=$from28&&$s['date']<=$today)$c28++;
+
+    return array(
+        'target_per_week'=>$target,
+        'totals'=>array('workouts'=>count($sessionList),'sets'=>$totalSets,'volume'=>round($totalVol),'month'=>$monthCount,
+            'avg_minutes'=>$mins?(int)round(array_sum($mins)/count($mins)):null,'week_streak'=>$streak,
+            'last_28'=>$c28,'target_28'=>$target*4,'prs'=>array_sum(array_map(function($e){return $e['prs'];},$exercises))),
+        'weeks'=>array_values($weeks),
+        'sessions'=>array_reverse($sessionList),
+        'exercises'=>$exercises
+    );
 }
 function scheduleWeekdayMap($pdo,$programId){
     $rows=scheduleForProgram($pdo,$programId);$m=array();
@@ -407,6 +528,104 @@ try{
         $s=$pdo->prepare("SELECT id FROM workout_sessions WHERE id=? AND status='in_progress' LIMIT 1");$s->execute(array($sid));
         if(!$s->fetchColumn())throw new RuntimeException('Тренировка не активна.');
         $pdo->prepare("UPDATE workout_sessions SET status='done',completed_at=NOW() WHERE id=?")->execute(array($sid));
+        wout(array('ok'=>true));
+    }
+
+    if($action==='delete_set'){
+        $sid=(int)(isset($x['session_id'])?$x['session_id']:0);
+        $eid=(int)(isset($x['exercise_id'])?$x['exercise_id']:0);
+        $setno=(int)(isset($x['set_no'])?$x['set_no']:0);
+        $s=$pdo->prepare("SELECT id FROM workout_sessions WHERE id=? AND status='in_progress' LIMIT 1");$s->execute(array($sid));
+        if(!$s->fetchColumn())throw new RuntimeException('Тренировка не активна.');
+        $pdo->prepare("DELETE FROM workout_sets WHERE session_id=? AND exercise_id=? AND set_no=?")->execute(array($sid,$eid,$setno));
+        wout(array('ok'=>true));
+    }
+
+    if($action==='stats'){
+        $today=isset($x['date'])?(string)$x['date']:date('Y-m-d');
+        if(!wdate($today))throw new RuntimeException('Некорректная дата.');
+        wout(array('ok'=>true,'stats'=>workoutStats($pdo,$today)));
+    }
+
+    // ----- Program editor -----
+    if($action==='program'){
+        $program=activeProgram($pdo);$pid=(int)$program['id'];
+        $days=daysForProgram($pdo,$pid,true);
+        $used=$pdo->query("SELECT exercise_id,COUNT(*) n FROM workout_sets GROUP BY exercise_id")->fetchAll();
+        $usedMap=array();foreach($used as $u)$usedMap[(int)$u['exercise_id']]=(int)$u['n'];
+        foreach($days as &$d){
+            $d['id']=(int)$d['id'];
+            foreach($d['exercises'] as &$e){
+                $e['id']=(int)$e['id'];$e['is_archived']=(int)$e['is_archived'];$e['sets_logged']=isset($usedMap[$e['id']])?$usedMap[$e['id']]:0;
+                $e['rest_seconds']=$e['rest_seconds']!==null?(int)$e['rest_seconds']:null;
+            }
+            unset($e);
+        }
+        unset($d);
+        wout(array('ok'=>true,'program'=>array('id'=>$pid,'name'=>(string)$program['name'],'target_per_week'=>(int)$program['target_per_week']),'days'=>$days,'schedule'=>scheduleForProgram($pdo,$pid)));
+    }
+
+    if($action==='exercise_save'){
+        $program=activeProgram($pdo);$pid=(int)$program['id'];
+        $id=(int)(isset($x['id'])?$x['id']:0);
+        $dayId=(int)(isset($x['day_id'])?$x['day_id']:0);
+        $name=trim(preg_replace('/\s+/u',' ',(string)(isset($x['name'])?$x['name']:'')));
+        $sets=(int)(isset($x['target_sets'])?$x['target_sets']:3);
+        $reps=mb_substr(trim((string)(isset($x['target_reps'])?$x['target_reps']:'')),0,60);
+        $weight=isset($x['default_weight'])&&$x['default_weight']!==''&&$x['default_weight']!==null?(float)str_replace(',','.',(string)$x['default_weight']):null;
+        $rest=isset($x['rest_seconds'])&&$x['rest_seconds']!==''&&$x['rest_seconds']!==null?(int)$x['rest_seconds']:null;
+        $notes=mb_substr(trim((string)(isset($x['notes'])?$x['notes']:'')),0,500);
+        if($name==='')throw new RuntimeException('Название упражнения пустое.');
+        $name=mb_substr($name,0,220);
+        if($sets<1||$sets>12)throw new RuntimeException('Подходов должно быть от 1 до 12.');
+        if($weight!==null&&($weight<0||$weight>1000))throw new RuntimeException('Некорректный вес.');
+        if($rest!==null&&($rest<15||$rest>900))throw new RuntimeException('Отдых — от 15 до 900 секунд.');
+        $chk=$pdo->prepare("SELECT id FROM workout_days WHERE id=? AND program_id=?");$chk->execute(array($dayId,$pid));
+        if(!$chk->fetchColumn())throw new RuntimeException('Тренировочный день не найден.');
+        if($id>0){
+            $s=$pdo->prepare("SELECT day_id FROM workout_exercises WHERE id=?");$s->execute(array($id));$cur=$s->fetchColumn();
+            if($cur===false)throw new RuntimeException('Упражнение не найдено.');
+            $pdo->prepare("UPDATE workout_exercises SET name=?,target_sets=?,target_reps=?,default_weight=?,rest_seconds=?,notes=? WHERE id=?")
+                ->execute(array($name,$sets,$reps!==''?$reps:null,$weight,$rest,$notes!==''?$notes:null,$id));
+        }else{
+            $s=$pdo->prepare("SELECT COALESCE(MAX(exercise_order),0)+1 FROM workout_exercises WHERE day_id=?");$s->execute(array($dayId));$ord=(int)$s->fetchColumn();
+            $pdo->prepare("INSERT INTO workout_exercises(day_id,exercise_order,name,target_sets,target_reps,default_weight,rest_seconds,notes,is_archived) VALUES(?,?,?,?,?,?,?,?,0)")
+                ->execute(array($dayId,$ord,$name,$sets,$reps!==''?$reps:null,$weight,$rest,$notes!==''?$notes:null));
+            $id=(int)$pdo->lastInsertId();
+        }
+        wout(array('ok'=>true,'id'=>$id));
+    }
+
+    if($action==='exercise_archive'||$action==='exercise_restore'){
+        $id=(int)(isset($x['id'])?$x['id']:0);
+        $s=$pdo->prepare("SELECT id FROM workout_exercises WHERE id=?");$s->execute(array($id));
+        if(!$s->fetchColumn())throw new RuntimeException('Упражнение не найдено.');
+        $pdo->prepare("UPDATE workout_exercises SET is_archived=? WHERE id=?")->execute(array($action==='exercise_archive'?1:0,$id));
+        wout(array('ok'=>true));
+    }
+
+    if($action==='exercise_move'){
+        $id=(int)(isset($x['id'])?$x['id']:0);$dir=(int)(isset($x['dir'])?$x['dir']:0)<0?-1:1;
+        $s=$pdo->prepare("SELECT id,day_id FROM workout_exercises WHERE id=?");$s->execute(array($id));$row=$s->fetch();
+        if(!$row)throw new RuntimeException('Упражнение не найдено.');
+        $s=$pdo->prepare("SELECT id FROM workout_exercises WHERE day_id=? AND is_archived=0 ORDER BY exercise_order,id");$s->execute(array((int)$row['day_id']));
+        $ids=array_map('intval',$s->fetchAll(PDO::FETCH_COLUMN));
+        $pos=array_search($id,$ids,true);
+        if($pos!==false){
+            $to=$pos+$dir;
+            if($to>=0&&$to<count($ids)){$tmp=$ids[$to];$ids[$to]=$ids[$pos];$ids[$pos]=$tmp;}
+            $u=$pdo->prepare("UPDATE workout_exercises SET exercise_order=? WHERE id=?");
+            $pdo->beginTransaction();foreach($ids as $i=>$eid)$u->execute(array($i+1,$eid));$pdo->commit();
+        }
+        wout(array('ok'=>true));
+    }
+
+    if($action==='day_rename'){
+        $program=activeProgram($pdo);$pid=(int)$program['id'];
+        $id=(int)(isset($x['id'])?$x['id']:0);
+        $name=mb_substr(trim(preg_replace('/\s+/u',' ',(string)(isset($x['name'])?$x['name']:''))),0,120);
+        if($name==='')throw new RuntimeException('Название дня пустое.');
+        $s=$pdo->prepare("UPDATE workout_days SET name=? WHERE id=? AND program_id=?");$s->execute(array($name,$id,$pid));
         wout(array('ok'=>true));
     }
 

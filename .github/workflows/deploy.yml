@@ -63,8 +63,20 @@ jobs:
           bad=$(ls -A migrations | grep -vE '^([0-9]{4}_[a-z0-9_]+\.(sql|php)|README\.md|\.htaccess)$' || true)
           if [ -n "$bad" ]; then echo "::error::Bad migration names: $bad"; exit 1; fi
 
-      - name: Migrations apply on MariaDB and are idempotent
+      - name: Load production schema (structure + small fixture)
+        run: mysql -h127.0.0.1 -uroot -pci ci < tools/ci_baseline.sql
+
+      - name: CI config.php
+        run: |
+          cat > config.php <<'PHP'
+          <?php return ['db_host'=>'127.0.0.1','db_name'=>'ci','db_user'=>'root','db_pass'=>'ci','session_name'=>'ci','timezone'=>'Asia/Almaty'];
+          PHP
+
+      - name: Migrations apply on top of production schema and are idempotent
         run: php tools/test_migrations.php
+
+      - name: API scenarios
+        run: php tools/test_api.php
 
   release:
     name: Release to production branch
