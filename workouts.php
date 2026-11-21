@@ -541,6 +541,26 @@ try{
         wout(array('ok'=>true));
     }
 
+    if($action==='skip_missed'){
+        // Mark all past planned (not started, no sets) sessions as skipped; the weekly schedule is untouched.
+        $program=activeProgram($pdo);$pid=(int)$program['id'];
+        $date=isset($x['date'])?(string)$x['date']:date('Y-m-d');
+        if(!wdate($date))throw new RuntimeException('Некорректная дата.');
+        $s=$pdo->prepare("SELECT ws.* FROM workout_sessions ws WHERE ws.program_id=? AND ws.status='planned' AND ws.scheduled_date<?
+            AND NOT EXISTS(SELECT 1 FROM workout_sets x WHERE x.session_id=ws.id)");
+        $s->execute(array($pid,$date));$rows=$s->fetchAll();
+        $pdo->beginTransaction();
+        $skip=$pdo->prepare("INSERT INTO workout_schedule_skips(program_id,original_date,reason) VALUES(?,?,'missed') ON DUPLICATE KEY UPDATE reason='missed'");
+        $del=$pdo->prepare("DELETE FROM workout_sessions WHERE id=?");
+        foreach($rows as $r){
+            $origin=!empty($r['origin_date'])?(string)$r['origin_date']:(string)$r['scheduled_date'];
+            if(isScheduledOrigin($pdo,$pid,(int)$r['day_id'],$origin))$skip->execute(array($pid,$origin));
+            $del->execute(array((int)$r['id']));
+        }
+        $pdo->commit();
+        wout(array('ok'=>true,'skipped'=>count($rows)));
+    }
+
     if($action==='stats'){
         $today=isset($x['date'])?(string)$x['date']:date('Y-m-d');
         if(!wdate($today))throw new RuntimeException('Некорректная дата.');

@@ -77,3 +77,16 @@ check($j['ok'] ?? false, 'rename day');
 // cleanup of the in-progress Wednesday session
 $j = call('workouts.php', 'delete', ['id' => $s2]);
 check($j['ok'] ?? false, 'delete session');
+
+// Clear missed sessions: past planned sessions disappear and are not regenerated
+$fri = '2026-11-27';
+$j = call('workouts.php', 'summary', ['date' => $fri, 'month' => '2026-11']);
+$missedBefore = count($j['summary']['overdue_sessions'] ?? []);
+check($missedBefore >= 1, 'has missed sessions before cleanup', $missedBefore);
+$j = call('workouts.php', 'skip_missed', ['date' => $fri]);
+check(($j['skipped'] ?? 0) === $missedBefore, 'skip_missed count', $j);
+$j = call('workouts.php', 'summary', ['date' => $fri, 'month' => '2026-11']);
+check(count($j['summary']['overdue_sessions'] ?? []) === 0, 'no missed after cleanup (not regenerated)', $j['summary']['overdue_sessions'] ?? null);
+check(($j['summary']['today_session']['day_name'] ?? '') !== '', 'today session still planned', $j['summary']['today_session'] ?? null);
+$j = call('workouts.php', 'stats', ['date' => $fri]);
+check(($j['stats']['totals']['workouts'] ?? 0) === 1, 'done history untouched by cleanup', $j['stats']['totals'] ?? null);

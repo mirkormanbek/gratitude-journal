@@ -112,6 +112,7 @@
         <div class="ui-title">${esc(h.session ? h.session.day_name : 'Тренировки')}</div>
         <div class="ui-meta">${h.day ? `${exN} ${U.plural(exN, 'упражнение', 'упражнения', 'упражнений')} · ~${est} мин` : 'Настрой расписание в календаре'}${h.extra > 1 ? ` · пропущено ${h.extra}` : ''}</div>
         ${weekStrip()}
+        ${(st.summary.overdue_sessions || []).length > 1 ? `<div class="ui-meta" style="margin-top:10px;font-size:12px">Пропущенных: ${st.summary.overdue_sessions.length}. <button class="ui-btn ghost" data-act="skip-missed" style="font-size:12px;padding:0">Очистить старые пропуски</button></div>` : ''}
         <div class="wk-hero-actions"><button class="ui-btn primary" data-act="hero">${esc(h.btn)}</button>${h.day ? `<button class="ui-btn" data-act="preview" title="Посмотреть упражнения">Состав</button>` : ''}</div>
       </div>
       <div class="ui-sec"><b>Ритм</b></div>
@@ -478,6 +479,12 @@
     const a = b.dataset.act;
     if (a === 'hero') return heroAction(b);
     if (a === 'preview') return previewDay();
+    if (a === 'skip-missed') {
+      const n = (st.summary.overdue_sessions || []).length;
+      if (!(await U.confirm(`Отметить ${n} ${U.plural(n, 'пропущенную тренировку', 'пропущенные тренировки', 'пропущенных тренировок')} как пропуск и убрать из календаря? Выполненные тренировки и расписание не изменятся.`, 'Очистить'))) return;
+      try { const j = await API('skip_missed', { date: U.today() }); U.toast(`Убрано: ${j.skipped}`); await load(); } catch (e) { U.toast('Ошибка: ' + e.message); }
+      return;
+    }
     if (a === 'tab') return setTab(b.dataset.tab);
     if (a === 'done-session') return openDoneSession(b.dataset.id);
     if (a === 'month') { const d = new Date(st.month + '-01T12:00:00'); d.setMonth(d.getMonth() + Number(b.dataset.d)); st.month = d.toISOString().slice(0, 7); const r = await API('summary', { date: U.today(), month: st.month }); st.summary = r.summary; return render(); }
