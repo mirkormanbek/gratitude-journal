@@ -18,7 +18,7 @@ check(($j['note']['project_name'] ?? '') === 'Оптовый канал', 'linke
 $idea = (int)($j['note']['id'] ?? 0);
 
 $j = call('notes.php', 'save', ['id' => $quick, 'kind' => 'note', 'body' => 'x', 'status' => 'Сработало', 'why' => 'w']);
-check(($j['note']['status'] ?? 'set') === null && ($j['note']['why'] ?? 'set') === null, 'plain note ignores idea fields', $j['note'] ?? null);
+check(array_key_exists('status', $j['note'] ?? []) && $j['note']['status'] === null && $j['note']['why'] === null, 'plain note ignores idea fields', $j['note'] ?? null);
 
 $j = call('notes.php', 'save', ['body' => '   ']);
 check(($j['ok'] ?? true) === false, 'empty note rejected', $j);
