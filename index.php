@@ -1,4 +1,5 @@
 <?php
+define('GROWTH_SESSION_WRITE', true);
 require __DIR__ . '/db.php';
 if (empty($_SESSION['user_id'])) { header('Location: login.php'); exit; }
 if (empty($_SESSION['csrf'])) { $_SESSION['csrf'] = bin2hex(random_bytes(32)); }

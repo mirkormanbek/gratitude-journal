@@ -1,4 +1,5 @@
 <?php
+define('GROWTH_SESSION_WRITE', true);
 require __DIR__ . '/db.php';
 if (!empty($_SESSION['user_id'])) { header('Location: index.php'); exit; }
 

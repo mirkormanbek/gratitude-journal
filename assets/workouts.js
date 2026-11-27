@@ -376,7 +376,8 @@
     const started = s.started_at ? new Date(String(s.started_at).replace(' ', 'T')) : new Date();
     const tick = () => { const m = Math.max(0, Math.floor((Date.now() - started) / 60000)); const el = sh.q('#gymClock'); if (el) el.textContent = `${m} мин · ${U.date(s.scheduled_date, { day: 'numeric', month: 'long' })}`; };
     tick(); gym.clock = setInterval(tick, 20000);
-    try { if (navigator.wakeLock) gym.lock = await navigator.wakeLock.request('screen'); } catch (e) { /* not supported */ }
+    // keep the screen on, but never block opening the workout on it (iOS PWAs may never resolve)
+    try { if (navigator.wakeLock) navigator.wakeLock.request('screen').then(l => { if (gym) gym.lock = l; }).catch(() => {}); } catch (e) { /* not supported */ }
     gymProgress();
     const first = sh.q('.wk-setrow:not(.done)'); if (first) first.closest('.wk-exc').classList.add('cur');
   }

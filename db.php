@@ -37,3 +37,10 @@ session_set_cookie_params([
 if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
+// PHP file sessions are locked for the whole request. API endpoints only READ the session,
+// so release the lock immediately: otherwise a slow request (OpenAI / Quran API, up to 80 s)
+// blocks every other request of the same user (e.g. opening or finishing a workout).
+// Pages that write to $_SESSION (login, logout, index) define GROWTH_SESSION_WRITE first.
+if (!defined('GROWTH_SESSION_WRITE') && PHP_SAPI !== 'cli') {
+    session_write_close();
+}

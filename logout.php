@@ -1,4 +1,5 @@
 <?php
+define('GROWTH_SESSION_WRITE', true);
 require __DIR__ . '/db.php';
 $_SESSION = [];
 if (ini_get("session.use_cookies")) {
