@@ -5,7 +5,7 @@ header('Content-Type: application/json; charset=utf-8');
 if (empty($_SESSION['user_id'])) { http_response_code(401); echo json_encode(['ok'=>false,'error'=>'unauthorized'], JSON_UNESCAPED_UNICODE); exit; }
 date_default_timezone_set((string)($config['timezone'] ?? 'Asia/Almaty'));
 function jout(array $x, int $status=200): void { http_response_code($status); echo json_encode($x, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES); exit; }
-function bodyJson(): array { $raw=file_get_contents('php://input'); $x=json_decode($raw ?: '{}',true); return is_array($x)?$x:[]; }
+function bodyJson(): array { $raw=defined('GROWTH_CI_BODY')?GROWTH_CI_BODY:file_get_contents('php://input'); $x=json_decode($raw ?: '{}',true); return is_array($x)?$x:[]; }
 function requireCsrf(): void { $sent=$_SERVER['HTTP_X_CSRF_TOKEN'] ?? ''; $expected=$_SESSION['csrf'] ?? ''; if(!$sent || !$expected || !hash_equals($expected,$sent)) jout(['ok'=>false,'error'=>'csrf'],403); }
 function validDate(string $s): bool { $d=DateTimeImmutable::createFromFormat('!Y-m-d',$s); return $d && $d->format('Y-m-d')===$s; }
 function aiRateLimit(): void { $now=time(); $calls=$_SESSION['ai_call_times'] ?? []; if(!is_array($calls))$calls=[]; $calls=array_values(array_filter($calls,function($t) use($now){return is_int($t)&&$t>$now-3600;})); if(count($calls)>=20)jout(['ok'=>false,'error'=>'Лимит AI: не более 20 генераций в час.'],429); $calls[]=$now; $_SESSION['ai_call_times']=$calls; }
@@ -35,6 +35,7 @@ function progressData(PDO $pdo,string $today): array {
 $action=(string)($_GET['action'] ?? '');
 try{
  if(($_SERVER['REQUEST_METHOD']??'GET')!=='POST')jout(['ok'=>false,'error'=>'method not allowed'],405); requireCsrf(); $x=bodyJson(); $date=(string)($x['date']??date('Y-m-d')); if(!validDate($date))throw new RuntimeException('Некорректная дата.');
+ if(($action==='person_day'||$action==='person_complete')&&!growth_module_enabled($pdo,'person'))jout(['ok'=>true,'disabled'=>true,'data'=>null]);
  if($action==='person_day'){
    $s=$pdo->prepare("SELECT person_name,person_content,person_completed_at FROM daily_content WHERE content_date=? LIMIT 1");$s->execute([$date]);$row=$s->fetch();
    if($row && trim((string)$row['person_content'])!==''){ $p=json_decode((string)$row['person_content'],true); if(is_array($p)&&!empty($p['story'])&&!empty($p['contribution'])){$p['completed']=!empty($row['person_completed_at']);jout(['ok'=>true,'cached'=>true,'data'=>$p]);} }

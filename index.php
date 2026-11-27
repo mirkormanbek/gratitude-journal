@@ -614,6 +614,9 @@ body.modalOpen{overflow:hidden}
         <button class="serviceTile serviceAction" data-service="ai"><div><div class="serviceIcon">✨</div><b>AI-разбор</b><span>Разбор выбранных записей по запросу.</span></div></button>
         <button class="serviceTile goto" data-panel="exportPanel"><div><div class="serviceIcon">⇩</div><b>Экспорт</b><span>TXT для анализа и JSON backup.</span></div></button>
       </div>
+      <div class="ui-sec"><b>Модули</b></div>
+      <div class="ui-list" id="moduleList"></div>
+      <div class="ui-meta" style="font-size:12px;margin:8px 2px 0">Выключенный модуль скрыт с «Сегодня» и не обращается к ИИ и внешним API. Прогресс и история сохраняются.</div>
     </section>
 
     <section id="workouts" class="panel"><div id="wkRoot"></div></section>
@@ -1255,7 +1258,28 @@ function renderProgress(p){
   renderGrowthProgress();
 }
 async function loadProgress(){try{const j=await endpoint('ai.php?action=progress','POST',{date:today()});renderProgress(j.progress)}catch(e){$('quranProgressSub').textContent='Прогресс временно недоступен';$('personProgressSub').textContent='Прогресс временно недоступен'}}
-async function loadTodayModules(){await Promise.allSettled([loadQuran(),loadPerson(),loadProgress()]);}
+// Module switches (settings.php): Коран / Человек дня can be paused and resumed from Сервисы → Модули
+let modules={quran:true,person:true};
+const MODULE_INFO={quran:['📖','Коран','Чтение на 5–10 минут'],person:['👤','Человек дня','История человека за 3–5 минут']};
+function applyModules(){
+  const show=(el,on)=>{if(el)el.style.display=on?'':'none'};
+  show($('quranCard'),modules.quran);show($('personCard'),modules.person);
+  const tc=document.querySelector('.todayCards');
+  if(tc){show(tc,modules.quran||modules.person);tc.style.gridTemplateColumns=modules.quran&&modules.person?'':'1fr'}
+  document.querySelectorAll('.serviceAction[data-service="quran"],.serviceAction[data-service="person"]').forEach(b=>show(b,modules[b.dataset.service]));
+  const list=$('moduleList');
+  if(list)list.innerHTML=Object.keys(MODULE_INFO).map(k=>{const [i,n,d]=MODULE_INFO[k];return `<button class="ui-item" data-module="${k}"><div style="font-size:22px">${i}</div><div class="grow"><div class="t">${n}</div><div class="s">${d}</div></div><span class="ui-chip ${modules[k]?'green':''}">${modules[k]?'Включён':'Выключен'}</span></button>`}).join('');
+}
+async function loadModules(){try{const j=await endpoint('settings.php?action=get','POST',{});modules=j.modules||modules}catch(e){}applyModules()}
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-module]');if(!b)return;
+  const k=b.dataset.module,on=!modules[k];
+  try{const j=await endpoint('settings.php?action=set_module','POST',{module:k,enabled:on});modules=j.modules;applyModules();
+    if(window.UI)UI.toast(`${MODULE_INFO[k][1]}: ${on?'включён':'выключен'}`);
+    if(on){if(k==='quran')loadQuran();if(k==='person')loadPerson()}}
+  catch(err){alert('Ошибка: '+err.message)}
+});
+async function loadTodayModules(){await loadModules();await Promise.allSettled([modules.quran?loadQuran():null,modules.person?loadPerson():null,loadProgress()]);}
 
 
 function updateDailyTaskHint(){

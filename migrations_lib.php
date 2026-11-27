@@ -114,3 +114,20 @@ function growth_split_sql(string $sql): array
     }
     return $out;
 }
+
+/** App setting (app_settings table); returns $default if missing or table absent. */
+function growth_setting(PDO $pdo, string $name, ?string $default = null): ?string
+{
+    try {
+        $s = $pdo->prepare("SELECT value FROM app_settings WHERE name=?");
+        $s->execute([$name]);
+        $v = $s->fetchColumn();
+        return $v === false ? $default : (string)$v;
+    } catch (Throwable $e) {
+        return $default;
+    }
+}
+function growth_module_enabled(PDO $pdo, string $module): bool
+{
+    return growth_setting($pdo, 'module.' . $module, '1') !== '0';
+}
